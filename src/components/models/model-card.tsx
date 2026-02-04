@@ -35,9 +35,9 @@ function ModelCardInner({ model }: { model: ModelListItem }) {
   return (
     <Link
       href={`/models/${model.id}`}
-      className="group block break-inside-avoid mb-4"
+      className="group block break-inside-avoid mb-4 [content-visibility:auto] [contain-intrinsic-size:auto_400px]"
     >
-      <div className="overflow-hidden rounded-xl border border-border bg-card transition-all duration-200 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 hover:scale-[1.02]">
+      <div className="overflow-hidden rounded-xl border border-border bg-card transition-[border-color,box-shadow,transform] duration-200 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 hover:scale-[1.02]">
         {/* Hero image */}
         <div className="relative aspect-[4/3] overflow-hidden bg-zinc-900">
           {thumbUrl ? (
@@ -46,7 +46,7 @@ function ModelCardInner({ model }: { model: ModelListItem }) {
                 src={thumbUrl}
                 alt={model.name}
                 className={cn(
-                  "h-full w-full object-cover object-top transition-all duration-300",
+                  "h-full w-full object-cover object-top transition-[filter,transform] duration-300",
                   shouldBlur && "blur-2xl scale-110"
                 )}
                 loading="lazy"
@@ -87,7 +87,7 @@ function ModelCardInner({ model }: { model: ModelListItem }) {
               {model.type}
             </span>
             {model.baseModel && (
-              <span className="rounded-md bg-zinc-800/80 px-2 py-0.5 text-[10px] font-medium text-zinc-300 backdrop-blur-sm">
+              <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
                 {model.baseModel}
               </span>
             )}
