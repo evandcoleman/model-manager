@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { Download, ThumbsUp } from "lucide-react";
 import { cn, formatNumber } from "../../lib/utils";
@@ -21,7 +22,7 @@ function imageUrl(path: string | null | undefined): string | null {
   return `/api/images${path}`;
 }
 
-export function ModelCard({ model }: { model: ModelListItem }) {
+function ModelCardInner({ model }: { model: ModelListItem }) {
   const { isBlurred, revealedIds, toggleReveal } = useNsfw();
   const heroNsfwLevel = model.heroImage?.nsfwLevel ?? model.nsfwLevel;
   const shouldBlur =
@@ -49,6 +50,8 @@ export function ModelCard({ model }: { model: ModelListItem }) {
                   shouldBlur && "blur-2xl scale-110"
                 )}
                 loading="lazy"
+                width={model.heroImage?.width ?? undefined}
+                height={model.heroImage?.height ?? undefined}
               />
               {shouldBlur && (
                 <button
@@ -134,3 +137,8 @@ export function ModelCard({ model }: { model: ModelListItem }) {
     </Link>
   );
 }
+
+export const ModelCard = memo(ModelCardInner, (prev, next) =>
+  prev.model.id === next.model.id
+  && prev.model.heroImage?.thumbPath === next.model.heroImage?.thumbPath
+);

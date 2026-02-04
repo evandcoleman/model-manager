@@ -183,6 +183,20 @@ export function Lightbox({ images, initialIndex, onClose }: LightboxProps) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose, goPrev, goNext]);
 
+  // Preload adjacent images for instant navigation
+  useEffect(() => {
+    for (const offset of [-1, 1, 2]) {
+      const i = index + offset;
+      if (i >= 0 && i < images.length) {
+        const url = imageUrl(images[i].localPath);
+        if (url) {
+          const p = new Image();
+          p.src = url;
+        }
+      }
+    }
+  }, [index, images]);
+
   // Prevent body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";

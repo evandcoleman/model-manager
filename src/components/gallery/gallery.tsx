@@ -28,6 +28,7 @@ export function Gallery({ initialData, initialFilters }: GalleryProps) {
   });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageRef = useRef(1);
 
   const fetchModels = useCallback(
     async (pageNum: number, append: boolean = false) => {
@@ -56,6 +57,7 @@ export function Gallery({ initialData, initialFilters }: GalleryProps) {
         setTotal(data.total);
         setHasMore(data.hasMore);
         setPage(pageNum);
+        pageRef.current = pageNum;
       } finally {
         setLoading(false);
       }
@@ -75,8 +77,8 @@ export function Gallery({ initialData, initialFilters }: GalleryProps) {
   }, [fetchModels]);
 
   const handleLoadMore = useCallback(() => {
-    fetchModels(page + 1, true);
-  }, [fetchModels, page]);
+    fetchModels(pageRef.current + 1, true);
+  }, [fetchModels]);
 
   const handleRescan = useCallback(async () => {
     setIsScanning(true);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
+import { createReadStream } from "fs";
+import { access, stat } from "fs/promises";
 import path from "path";
 import { getConfig } from "../../../../lib/config";
 
@@ -36,18 +37,29 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (!fs.existsSync(normalizedPath)) {
+  try {
+    await access(normalizedPath);
+  } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const ext = path.extname(normalizedPath).toLowerCase();
   const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
 
-  const fileBuffer = fs.readFileSync(normalizedPath);
+  const fileStats = await stat(normalizedPath);
+  const stream = createReadStream(normalizedPath);
+  const webStream = new ReadableStream({
+    start(controller) {
+      stream.on("data", (chunk) => controller.enqueue(chunk));
+      stream.on("end", () => controller.close());
+      stream.on("error", (err) => controller.error(err));
+    },
+  });
 
-  return new NextResponse(fileBuffer, {
+  return new NextResponse(webStream, {
     headers: {
       "Content-Type": contentType,
+      "Content-Length": String(fileStats.size),
       "Cache-Control": "public, max-age=31536000, immutable",
     },
   });

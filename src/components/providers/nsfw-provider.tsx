@@ -6,6 +6,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useMemo,
   type ReactNode,
 } from "react";
 
@@ -64,10 +65,13 @@ export function NsfwProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const contextValue = useMemo(
+    () => ({ maxNsfwLevel, setMaxNsfwLevel, isBlurred, revealedIds, toggleReveal, revealAll, setRevealAll }),
+    [maxNsfwLevel, setMaxNsfwLevel, isBlurred, revealedIds, toggleReveal, revealAll, setRevealAll]
+  );
+
   return (
-    <NsfwContext.Provider
-      value={{ maxNsfwLevel, setMaxNsfwLevel, isBlurred, revealedIds, toggleReveal, revealAll, setRevealAll }}
-    >
+    <NsfwContext.Provider value={contextValue}>
       {children}
     </NsfwContext.Provider>
   );
