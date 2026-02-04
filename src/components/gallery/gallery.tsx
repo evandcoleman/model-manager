@@ -24,6 +24,7 @@ export function Gallery({ initialData, initialFilters }: GalleryProps) {
   const [filters, setFilters] = useState<ActiveFilters>({
     tags: [],
     sort: "newest",
+    showNoMetadata: false,
   });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,6 +40,8 @@ export function Gallery({ initialData, initialFilters }: GalleryProps) {
         if (filters.tags.length > 0) params.set("tags", filters.tags.join(","));
         if (filters.sort && filters.sort !== "newest")
           params.set("sort", filters.sort);
+        if (!filters.showNoMetadata)
+          params.set("hasMetadata", "true");
         params.set("page", String(pageNum));
         params.set("limit", "40");
 

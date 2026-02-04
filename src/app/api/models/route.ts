@@ -30,6 +30,9 @@ export async function GET(request: NextRequest) {
   const maxNsfwLevel = searchParams.get("maxNsfwLevel");
   if (maxNsfwLevel) filters.maxNsfwLevel = parseInt(maxNsfwLevel, 10);
 
+  const hasMetadata = searchParams.get("hasMetadata");
+  if (hasMetadata != null) filters.hasMetadata = hasMetadata === "true";
+
   const sort = searchParams.get("sort") as ModelFilters["sort"];
   if (sort) filters.sort = sort;
 

@@ -18,6 +18,7 @@ export interface ModelFilters {
   search?: string;
   tags?: string[];
   maxNsfwLevel?: number;
+  hasMetadata?: boolean;
   sort?: "newest" | "oldest" | "name" | "downloads" | "likes";
   page?: number;
   limit?: number;
@@ -52,6 +53,9 @@ export function getModels(
     conditions.push(
       sql`${models.nsfwLevel} <= ${filters.maxNsfwLevel}`
     );
+  }
+  if (filters.hasMetadata != null) {
+    conditions.push(eq(models.hasMetadata, filters.hasMetadata));
   }
   if (filters.tags && filters.tags.length > 0) {
     // Match models that have any of the specified tags

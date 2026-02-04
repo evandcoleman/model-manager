@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default function Home() {
   const db = getDatabase();
-  const initialData = getModels(db, { page: 1, limit: 40 });
+  const initialData = getModels(db, { page: 1, limit: 40, hasMetadata: true });
   const filterOptions = getFilterOptions(db);
 
   return (

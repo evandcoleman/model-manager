@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, X, Eye, EyeOff } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useNsfw } from "../providers/nsfw-provider";
 import type { FilterOptions } from "../../lib/types";
 
 export interface ActiveFilters {
@@ -10,6 +11,7 @@ export interface ActiveFilters {
   baseModel?: string;
   tags: string[];
   sort: string;
+  showNoMetadata: boolean;
 }
 
 interface FilterBarProps {
@@ -111,8 +113,9 @@ export function FilterBar({
   total,
   onFilterChange,
 }: FilterBarProps) {
+  const { revealAll, setRevealAll } = useNsfw();
   const hasActiveFilters =
-    filters.category || filters.baseModel || filters.tags.length > 0;
+    filters.category || filters.baseModel || filters.tags.length > 0 || filters.showNoMetadata;
 
   return (
     <div className="sticky top-14 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -180,6 +183,40 @@ export function FilterBar({
           }}
         />
 
+        <div className="h-5 w-px bg-border shrink-0" />
+
+        {/* NSFW reveal toggle */}
+        <button
+          onClick={() => setRevealAll(!revealAll)}
+          className={cn(
+            "flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1 text-sm transition-colors",
+            revealAll
+              ? "border-accent/50 bg-accent/10 text-accent"
+              : "border-border bg-card text-muted hover:text-foreground"
+          )}
+        >
+          {revealAll ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+          NSFW
+        </button>
+
+        {/* Show models without metadata */}
+        <button
+          onClick={() =>
+            onFilterChange({
+              ...filters,
+              showNoMetadata: !filters.showNoMetadata,
+            })
+          }
+          className={cn(
+            "shrink-0 rounded-lg border px-3 py-1 text-sm transition-colors",
+            filters.showNoMetadata
+              ? "border-accent/50 bg-accent/10 text-accent"
+              : "border-border bg-card text-muted hover:text-foreground"
+          )}
+        >
+          No metadata
+        </button>
+
         <div className="flex-1" />
 
         {/* Active filter chips */}
@@ -210,6 +247,7 @@ export function FilterBar({
                   baseModel: undefined,
                   tags: [],
                   sort: filters.sort,
+                  showNoMetadata: false,
                 })
               }
               className="text-xs text-muted hover:text-foreground transition-colors"

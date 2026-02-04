@@ -15,6 +15,8 @@ interface NsfwContextValue {
   isBlurred: (nsfwLevel: number) => boolean;
   revealedIds: Set<number>;
   toggleReveal: (id: number) => void;
+  revealAll: boolean;
+  setRevealAll: (val: boolean) => void;
 }
 
 const NsfwContext = createContext<NsfwContextValue | null>(null);
@@ -25,6 +27,7 @@ const DEFAULT_MAX_LEVEL = 2; // blur Mature (8) and above by default
 export function NsfwProvider({ children }: { children: ReactNode }) {
   const [maxNsfwLevel, setMaxNsfwLevelState] = useState(DEFAULT_MAX_LEVEL);
   const [revealedIds, setRevealedIds] = useState<Set<number>>(new Set());
+  const [revealAll, setRevealAll] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -42,10 +45,11 @@ export function NsfwProvider({ children }: { children: ReactNode }) {
 
   const isBlurred = useCallback(
     (nsfwLevel: number) => {
+      if (revealAll) return false;
       if (!loaded) return true;
       return nsfwLevel > maxNsfwLevel;
     },
-    [maxNsfwLevel, loaded]
+    [maxNsfwLevel, loaded, revealAll]
   );
 
   const toggleReveal = useCallback((id: number) => {
@@ -62,7 +66,7 @@ export function NsfwProvider({ children }: { children: ReactNode }) {
 
   return (
     <NsfwContext.Provider
-      value={{ maxNsfwLevel, setMaxNsfwLevel, isBlurred, revealedIds, toggleReveal }}
+      value={{ maxNsfwLevel, setMaxNsfwLevel, isBlurred, revealedIds, toggleReveal, revealAll, setRevealAll }}
     >
       {children}
     </NsfwContext.Provider>

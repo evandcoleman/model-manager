@@ -14,14 +14,40 @@
 
 import fs from "fs";
 import path from "path";
+import os from "os";
 import https from "https";
 import http from "http";
+import readline from "readline";
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
 const DEFAULT_MODEL_DIR = process.env.MODEL_DIR ?? "/Volumes/AI/models";
+const CONFIG_PATH = path.join(os.homedir(), ".config", "model-manager", "config.json");
+
+function loadConfig(): Record<string, string> {
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveConfig(config: Record<string, string>): void {
+  fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+}
+
+function getHfToken(): string | undefined {
+  return process.env.HF_TOKEN ?? loadConfig().hfToken;
+}
+
+function saveHfToken(token: string): void {
+  const config = loadConfig();
+  config.hfToken = token;
+  saveConfig(config);
+}
 
 const TYPE_DIR_MAP: Record<string, string> = {
   LORA: "loras",
@@ -111,6 +137,16 @@ interface CivArchiveImage {
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
+function prompt(question: string): Promise<string> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
 function fetchText(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const client = url.startsWith("https") ? https : http;
@@ -133,24 +169,57 @@ function fetchText(url: string): Promise<string> {
   });
 }
 
-function downloadFile(url: string, dest: string): Promise<void> {
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.floor(seconds)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  if (m < 60) return `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m ${s}s`;
+}
+
+class HttpError extends Error {
+  constructor(public statusCode: number, url: string, public body: string = "") {
+    super(`HTTP ${statusCode} for ${url}`);
+  }
+}
+
+function downloadFile(url: string, dest: string, extraHeaders: Record<string, string> = {}): Promise<void> {
   return new Promise((resolve, reject) => {
     const client = url.startsWith("https") ? https : http;
+    const headers = { "User-Agent": "ModelManager/1.0", ...extraHeaders };
     client
-      .get(url, { headers: { "User-Agent": "ModelManager/1.0" } }, (res) => {
+      .get(url, { headers }, (res) => {
         if (
           res.statusCode &&
           res.statusCode >= 300 &&
           res.statusCode < 400 &&
           res.headers.location
         ) {
-          return downloadFile(res.headers.location, dest).then(
+          // Strip auth headers when redirecting to a different host (e.g. HF -> CDN)
+          const originHost = new URL(url).hostname;
+          const redirectHost = new URL(res.headers.location, url).hostname;
+          const redirectHeaders = originHost === redirectHost ? extraHeaders : {};
+          return downloadFile(res.headers.location, dest, redirectHeaders).then(
             resolve,
             reject
           );
         }
         if (res.statusCode && res.statusCode >= 400) {
-          return reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+          const chunks: Buffer[] = [];
+          res.on("data", (chunk: Buffer) => chunks.push(chunk));
+          res.on("end", () => {
+            const body = Buffer.concat(chunks).toString().slice(0, 2000);
+            reject(new HttpError(res.statusCode!, url, body));
+          });
+          return;
         }
 
         const contentLength = parseInt(
@@ -159,26 +228,49 @@ function downloadFile(url: string, dest: string): Promise<void> {
         );
         const file = fs.createWriteStream(dest);
         let downloaded = 0;
-        let lastPercent = -1;
+        const startTime = Date.now();
+        const BAR_WIDTH = 30;
+
+        const drawProgress = () => {
+          const elapsed = (Date.now() - startTime) / 1000;
+          const speed = elapsed > 0 ? downloaded / elapsed : 0;
+
+          let line: string;
+          if (contentLength > 0) {
+            const fraction = downloaded / contentLength;
+            const filled = Math.round(BAR_WIDTH * fraction);
+            const bar = "█".repeat(filled) + "░".repeat(BAR_WIDTH - filled);
+            const percent = (fraction * 100).toFixed(1);
+            const eta = speed > 0 ? (contentLength - downloaded) / speed : 0;
+            line = `  ${bar} ${percent}%  ${formatBytes(downloaded)}/${formatBytes(contentLength)}  ${formatBytes(speed)}/s  ${formatDuration(elapsed)} elapsed  ETA ${formatDuration(eta)}`;
+          } else {
+            line = `  ${formatBytes(downloaded)}  ${formatBytes(speed)}/s  ${formatDuration(elapsed)} elapsed`;
+          }
+
+          process.stdout.write(`\r${line}`);
+        };
+
+        const interval = setInterval(drawProgress, 250);
 
         res.on("data", (chunk: Buffer) => {
           downloaded += chunk.length;
-          if (contentLength > 0) {
-            const percent = Math.floor((downloaded / contentLength) * 100);
-            if (percent !== lastPercent && percent % 5 === 0) {
-              lastPercent = percent;
-              process.stdout.write(`\r  Downloading: ${percent}%`);
-            }
-          }
         });
         res.pipe(file);
         file.on("finish", () => {
-          process.stdout.write("\r  Downloading: 100%\n");
+          clearInterval(interval);
+          drawProgress();
+          process.stdout.write("\n");
           file.close();
           resolve();
         });
-        file.on("error", reject);
-        res.on("error", reject);
+        file.on("error", (err) => {
+          clearInterval(interval);
+          reject(err);
+        });
+        res.on("error", (err) => {
+          clearInterval(interval);
+          reject(err);
+        });
       })
       .on("error", reject);
   });
@@ -310,38 +402,58 @@ function buildImageSidecar(img: CivArchiveImage): Record<string, unknown> {
 // Find best download URL
 // ---------------------------------------------------------------------------
 
-function findDownloadUrl(file: CivArchiveFile, versionId: number): string {
-  const mirrors = file.mirrors ?? [];
+interface MirrorOption {
+  label: string;
+  url: string;
+  available: boolean;
+}
 
-  // Prefer non-deleted HuggingFace mirrors
-  const hfMirror = mirrors.find(
-    (m) => m.source === "huggingface" && !m.deletedAt && !m.is_gated && !m.is_paid
-  );
-  if (hfMirror) return hfMirror.url;
+function getAvailableMirrors(
+  file: CivArchiveFile,
+  versionId: number
+): MirrorOption[] {
+  const allMirrors = file.mirrors ?? [];
 
-  // Any non-deleted mirror
-  const anyMirror = mirrors.find((m) => !m.deletedAt && !m.is_gated && !m.is_paid);
-  if (anyMirror) return anyMirror.url;
+  const options: MirrorOption[] = allMirrors.map((m) => {
+    const host = new URL(m.url).hostname;
+    const filename = m.filename ? ` — ${m.filename}` : "";
+    const available = !m.deletedAt && !m.is_gated && !m.is_paid;
+    const status = m.deletedAt ? " [deleted]" : m.is_gated ? " [gated]" : m.is_paid ? " [paid]" : "";
+    return {
+      label: `${m.source} (${host})${filename}${status}`,
+      url: m.url,
+      available,
+    };
+  });
 
-  // Fall back to civarchive download API
-  return `https://civarchive.com/api/download/models/${versionId}`;
+  // Always include civarchive fallback
+  options.push({
+    label: "civarchive (civarchive.com)",
+    url: `https://civarchive.com/api/download/models/${versionId}`,
+    available: true,
+  });
+
+  return options;
 }
 
 // ---------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------
 
-function parseArgs(): { url: string; modelDir: string; outputDir?: string } {
+function parseArgs(): { url: string; modelDir: string; outputDir?: string; downloadUrl?: string } {
   const args = process.argv.slice(2);
   let url = "";
   let modelDir = DEFAULT_MODEL_DIR;
   let outputDir: string | undefined;
+  let downloadUrl: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--model-dir" && args[i + 1]) {
       modelDir = args[++i];
     } else if ((args[i] === "--output" || args[i] === "-o") && args[i + 1]) {
       outputDir = args[++i];
+    } else if ((args[i] === "--url" || args[i] === "-u") && args[i + 1]) {
+      downloadUrl = args[++i];
     } else if (!args[i].startsWith("-")) {
       url = args[i];
     }
@@ -349,18 +461,33 @@ function parseArgs(): { url: string; modelDir: string; outputDir?: string } {
 
   if (!url) {
     console.error(
-      "Usage: npm run download -- <civarchive-url> [--output <folder>] [--model-dir <path>]"
+      "Usage: npm run download -- <civarchive-url> [options]"
     );
     console.error(
-      "Example: npm run download -- https://civarchive.com/models/2189974?modelVersionId=2465814"
+      "\nOptions:"
     );
     console.error(
-      "         npm run download -- <url> -o /Volumes/AI/models/loras/qwen/MyModel"
+      "  -o, --output <folder>    Output directory for the model"
+    );
+    console.error(
+      "  -u, --url <url>          Custom download URL for the model file"
+    );
+    console.error(
+      "  --model-dir <path>       Root model directory (default: /Volumes/AI/models)"
+    );
+    console.error(
+      "\nExamples:"
+    );
+    console.error(
+      "  npm run download -- https://civarchive.com/models/2189974?modelVersionId=2465814"
+    );
+    console.error(
+      "  npm run download -- <civarchive-url> -u https://huggingface.co/.../model.safetensors"
     );
     process.exit(1);
   }
 
-  return { url, modelDir, outputDir };
+  return { url, modelDir, outputDir, downloadUrl };
 }
 
 // ---------------------------------------------------------------------------
@@ -368,11 +495,12 @@ function parseArgs(): { url: string; modelDir: string; outputDir?: string } {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const { url, modelDir, outputDir: outputDirOverride } = parseArgs();
+  const { url, modelDir, outputDir: outputDirOverride, downloadUrl: customDownloadUrl } = parseArgs();
 
   console.log("CivArchive Downloader");
   console.log("=====================");
   console.log(`  URL: ${url}`);
+  if (customDownloadUrl) console.log(`  Download URL: ${customDownloadUrl}`);
   console.log(`  Model dir: ${modelDir}`);
   console.log();
 
@@ -392,26 +520,45 @@ async function main() {
   }
   console.log();
 
-  // 2. Find the safetensors file
-  const modelFile = version.files.find((f) =>
-    f.name.endsWith(".safetensors")
-  );
-  if (!modelFile) {
-    console.error("No .safetensors file found in this version");
+  // 2. Choose file to download
+  const files = version.files;
+  if (files.length === 0) {
+    console.error("No files found in this version");
     process.exit(1);
   }
 
+  let modelFile: CivArchiveFile;
+  if (files.length === 1) {
+    modelFile = files[0];
+    console.log(`File: ${modelFile.name}`);
+  } else {
+    console.log("Available files:");
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const size = f.sizeKB ? `~${Math.round(f.sizeKB / 1024)} MB` : "unknown size";
+      console.log(`  [${i + 1}] ${f.name} (${size})`);
+    }
+    const answer = await prompt(`\nSelect file [1-${files.length}]: `);
+    const idx = parseInt(answer, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= files.length) {
+      console.error("Invalid selection");
+      process.exit(1);
+    }
+    modelFile = files[idx];
+  }
+
   // 3. Determine output directory
+  const modelNameClean = model.name.replace(/[<>:"/\\|?*]/g, "");
   let outputDir: string;
   if (outputDirOverride) {
-    outputDir = path.resolve(outputDirOverride);
+    // -o specifies the parent; model gets its own subfolder
+    outputDir = path.join(path.resolve(outputDirOverride), modelNameClean);
   } else {
     const typeDir = TYPE_DIR_MAP[model.type] ?? "other";
     const baseModelDir =
       BASE_MODEL_DIR_MAP[version.baseModel ?? ""] ??
       version.baseModel?.toLowerCase().replace(/[^a-z0-9]+/g, "_") ??
       "unknown";
-    const modelNameClean = model.name.replace(/[<>:"/\\|?*]/g, "");
     outputDir = path.join(modelDir, typeDir, baseModelDir, modelNameClean);
   }
   const extraDataDir = path.join(outputDir, `extra_data-vid_${version.id}`);
@@ -419,20 +566,96 @@ async function main() {
   console.log(`Output: ${outputDir}`);
   fs.mkdirSync(extraDataDir, { recursive: true });
 
-  // 4. Build safetensors filename matching the expected pattern
-  const baseName = modelFile.name.replace(/\.safetensors$/, "");
-  const safetensorsName = `${baseName}-mid_${model.id}-vid_${version.id}.safetensors`;
-  const safetensorsPath = path.join(outputDir, safetensorsName);
+  // 4. Build filename matching the expected pattern
+  const ext = path.extname(modelFile.name);
+  const baseName = modelFile.name.replace(ext, "");
+  const destFilename = `${baseName}-mid_${model.id}-vid_${version.id}${ext}`;
+  const destPath = path.join(outputDir, destFilename);
 
   // 5. Download the model file
-  if (fs.existsSync(safetensorsPath)) {
+  if (fs.existsSync(destPath)) {
     console.log("Model file already exists, skipping download");
   } else {
-    const downloadUrl = findDownloadUrl(modelFile, version.id);
+    let downloadUrl: string;
+
+    if (customDownloadUrl) {
+      downloadUrl = customDownloadUrl;
+    } else {
+      const allMirrors = getAvailableMirrors(modelFile, version.id);
+      const selectable = allMirrors.filter((m) => m.available);
+
+      if (selectable.length === 1 && allMirrors.length === 1) {
+        downloadUrl = selectable[0].url;
+      } else {
+        console.log("Mirrors:");
+        let selectIdx = 1;
+        const indexMap: Record<number, MirrorOption> = {};
+        for (const m of allMirrors) {
+          if (m.available) {
+            console.log(`  [${selectIdx}] ${m.label}`);
+            indexMap[selectIdx] = m;
+            selectIdx++;
+          } else {
+            console.log(`   -  ${m.label}`);
+          }
+        }
+        const maxIdx = selectIdx - 1;
+        console.log(`  [c] Custom URL`);
+        const answer = await prompt(`\nSelect mirror [1-${maxIdx}] or 'c' for custom: `);
+        if (answer.toLowerCase() === "c") {
+          downloadUrl = await prompt("Enter download URL: ");
+          if (!downloadUrl) {
+            console.error("No URL provided");
+            process.exit(1);
+          }
+        } else {
+          const idx = parseInt(answer, 10);
+          if (isNaN(idx) || idx < 1 || !indexMap[idx]) {
+            console.error("Invalid selection");
+            process.exit(1);
+          }
+          downloadUrl = indexMap[idx].url;
+        }
+      }
+    }
+
     console.log(`Downloading ${modelFile.name} (~${Math.round((modelFile.sizeKB ?? 0) / 1024)} MB)...`);
     console.log(`  From: ${downloadUrl}`);
-    await downloadFile(downloadUrl, safetensorsPath);
-    console.log(`  Saved as: ${safetensorsName}`);
+
+    const cachedToken = getHfToken();
+    let headers: Record<string, string> = {};
+    if (cachedToken) {
+      headers["Authorization"] = `Bearer ${cachedToken}`;
+    }
+
+    try {
+      await downloadFile(downloadUrl, destPath, headers);
+    } catch (err) {
+      // Clean up partial file before retry
+      if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
+
+      if (err instanceof HttpError) {
+        console.error(`\n  HTTP ${err.statusCode}`);
+        if (err.body) console.error(`  Response: ${err.body}`);
+
+        if (err.statusCode === 401 || err.statusCode === 403) {
+          const token = await prompt("\nEnter HuggingFace API token (hf_...), or press Enter to abort: ");
+          if (!token) {
+            process.exit(1);
+          }
+          headers["Authorization"] = `Bearer ${token}`;
+          await downloadFile(downloadUrl, destPath, headers);
+          // Save token for future runs
+          saveHfToken(token);
+          console.log(`  Token saved to ${CONFIG_PATH}`);
+        } else {
+          process.exit(1);
+        }
+      } else {
+        throw err;
+      }
+    }
+    console.log(`  Saved as: ${destFilename}`);
   }
   console.log();
 
