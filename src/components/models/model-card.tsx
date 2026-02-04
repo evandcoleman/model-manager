@@ -38,14 +38,14 @@ export function ModelCard({ model }: { model: ModelListItem }) {
     >
       <div className="overflow-hidden rounded-xl border border-border bg-card transition-all duration-200 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 hover:scale-[1.02]">
         {/* Hero image */}
-        <div className="relative aspect-[4/3] overflow-hidden bg-zinc-900">
+        <div className="relative overflow-hidden bg-zinc-900">
           {thumbUrl ? (
             <>
               <img
                 src={thumbUrl}
                 alt={model.name}
                 className={cn(
-                  "h-full w-full object-cover transition-all duration-300",
+                  "w-full transition-all duration-300",
                   shouldBlur && "blur-2xl scale-110"
                 )}
                 loading="lazy"
@@ -66,7 +66,7 @@ export function ModelCard({ model }: { model: ModelListItem }) {
               )}
             </>
           ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
+            <div className="flex h-32 items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
               <span className="text-2xl font-bold text-zinc-700">
                 {model.name.charAt(0).toUpperCase()}
               </span>
