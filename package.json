@@ -9,7 +9,8 @@
     "lint": "eslint",
     "scan": "tsx src/scanner/cli.ts",
     "db:push": "drizzle-kit push",
-    "download": "tsx scripts/download-from-civarchive.ts"
+    "download": "tsx scripts/download-from-civarchive.ts",
+    "api-key": "tsx src/scripts/api-key.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",
