@@ -96,7 +96,7 @@ function ModelCardInner({ model }: { model: ModelListItem }) {
 
         {/* Info */}
         <div className="p-3">
-          <h3 className="text-sm font-medium leading-snug line-clamp-2 text-foreground group-hover:text-accent transition-colors">
+          <h3 className="text-sm font-medium leading-snug line-clamp-2 min-h-[2.5em] text-foreground group-hover:text-accent transition-colors">
             {model.name}
           </h3>
 
