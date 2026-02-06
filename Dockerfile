@@ -19,8 +19,8 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV MODEL_DIR=/data/models
-ENV DATA_DIR=/app/.data
+ENV MODEL_DIR=/models
+ENV DATA_DIR=/config
 
 RUN apk add --no-cache vips-dev
 RUN addgroup --system --gid 1001 nodejs
@@ -39,7 +39,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
-RUN mkdir -p .data && chown nextjs:nodejs .data
+RUN mkdir -p /config /models && chown nextjs:nodejs /config /models
 
 USER nextjs
 
