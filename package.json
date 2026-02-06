@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "scan": "tsx src/scanner/cli.ts",
+    "db:init": "tsx src/db/init.ts",
     "db:push": "drizzle-kit push",
     "download": "tsx scripts/download-from-civarchive.ts",
     "api-key": "tsx src/scripts/api-key.ts"
