@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FileText, ChevronDown, Pencil, Check, X, Upload } from "lucide-react";
 import { cn, formatFileSize } from "../../lib/utils";
@@ -75,14 +75,37 @@ function VersionSelector({
 
 export function ModelPlaceholder({ model }: { model: ModelDetail }) {
   const router = useRouter();
-  const [selectedVersion, setSelectedVersion] = useState<VersionDetail | null>(
-    model.versions[0] ?? null
-  );
+  const searchParams = useSearchParams();
+
+  // Get initial version from URL or default to first
+  const getInitialVersion = useCallback((): VersionDetail | null => {
+    const versionParam = searchParams.get("version");
+    if (versionParam) {
+      const versionId = parseInt(versionParam, 10);
+      const found = model.versions.find((v) => v.id === versionId);
+      if (found) return found;
+    }
+    return model.versions[0] ?? null;
+  }, [searchParams, model.versions]);
+
+  const [selectedVersion, setSelectedVersion] = useState<VersionDetail | null>(getInitialVersion);
   const [editing, setEditing] = useState(false);
   const [baseModel, setBaseModel] = useState(model.baseModel ?? "");
   const [saving, setSaving] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Update URL when version changes
+  const handleVersionSelect = useCallback((v: VersionDetail) => {
+    setSelectedVersion(v);
+    const url = new URL(window.location.href);
+    if (v.id === model.versions[0]?.id) {
+      url.searchParams.delete("version");
+    } else {
+      url.searchParams.set("version", String(v.id));
+    }
+    window.history.replaceState(window.history.state, "", url.toString());
+  }, [model.versions]);
 
   async function handleSave() {
     setSaving(true);
@@ -210,7 +233,7 @@ export function ModelPlaceholder({ model }: { model: ModelDetail }) {
             <VersionSelector
               versions={model.versions}
               selected={selectedVersion}
-              onSelect={setSelectedVersion}
+              onSelect={handleVersionSelect}
             />
           </div>
         )}

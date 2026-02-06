@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Download,
@@ -104,10 +104,33 @@ function VersionSelector({
 
 export function ModelDetailView({ model }: { model: ModelDetail }) {
   const router = useRouter();
-  const [selectedVersion, setSelectedVersion] = useState<VersionDetail>(
-    model.versions[0]
-  );
+  const searchParams = useSearchParams();
+
+  // Get initial version from URL or default to first
+  const getInitialVersion = useCallback(() => {
+    const versionParam = searchParams.get("version");
+    if (versionParam) {
+      const versionId = parseInt(versionParam, 10);
+      const found = model.versions.find((v) => v.id === versionId);
+      if (found) return found;
+    }
+    return model.versions[0];
+  }, [searchParams, model.versions]);
+
+  const [selectedVersion, setSelectedVersion] = useState<VersionDetail>(getInitialVersion);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+  // Update URL when version changes
+  const handleVersionSelect = useCallback((v: VersionDetail) => {
+    setSelectedVersion(v);
+    const url = new URL(window.location.href);
+    if (v.id === model.versions[0]?.id) {
+      url.searchParams.delete("version");
+    } else {
+      url.searchParams.set("version", String(v.id));
+    }
+    window.history.replaceState(window.history.state, "", url.toString());
+  }, [model.versions]);
 
   if (!model.hasMetadata) {
     return <ModelPlaceholder model={model} />;
@@ -213,7 +236,7 @@ export function ModelDetailView({ model }: { model: ModelDetail }) {
             <VersionSelector
               versions={model.versions}
               selected={selectedVersion}
-              onSelect={setSelectedVersion}
+              onSelect={handleVersionSelect}
             />
           </div>
         )}
