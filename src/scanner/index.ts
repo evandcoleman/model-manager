@@ -78,6 +78,22 @@ export async function runScanner(config: AppConfig): Promise<ScanResult> {
       baseModel = localVersion?.baseModel ?? null;
     }
 
+    // For models without metadata, try to infer base model from subcategory/path
+    if (!baseModel && primary.subcategory) {
+      const subcatLower = primary.subcategory.toLowerCase();
+      const baseModelMap: Record<string, string> = {
+        zit: "ZImageTurbo",
+        qwen: "Qwen",
+        sd15: "SD 1.5",
+        sd1: "SD 1.5",
+        sdxl: "SDXL 1.0",
+        flux: "Flux.1",
+        pony: "Pony",
+        wan: "Wan",
+      };
+      baseModel = baseModelMap[subcatLower] ?? primary.subcategory;
+    }
+
     // Insert model
     db.insert(models)
       .values({
