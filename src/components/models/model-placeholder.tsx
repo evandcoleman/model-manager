@@ -1,11 +1,68 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
-import { formatFileSize } from "../../lib/utils";
-import type { ModelDetail } from "../../lib/types";
+import { ArrowLeft, FileText, ChevronDown } from "lucide-react";
+import { cn, formatFileSize } from "../../lib/utils";
+import type { ModelDetail, VersionDetail } from "../../lib/types";
+
+function VersionSelector({
+  versions,
+  selected,
+  onSelect,
+}: {
+  versions: VersionDetail[];
+  selected: VersionDetail;
+  onSelect: (v: VersionDetail) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (versions.length <= 1) {
+    return (
+      <span className="text-sm text-muted">
+        Version: {selected.name}
+      </span>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm hover:border-accent/50 transition-colors"
+      >
+        {selected.name}
+        <ChevronDown className="h-3.5 w-3.5 text-muted" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-10 z-30 w-64 max-h-80 overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
+          {versions.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => {
+                onSelect(v);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-card-hover transition-colors",
+                v.id === selected.id && "text-accent"
+              )}
+            >
+              {v.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ModelPlaceholder({ model }: { model: ModelDetail }) {
+  const [selectedVersion, setSelectedVersion] = useState<VersionDetail | null>(
+    model.versions[0] ?? null
+  );
+
   return (
     <div className="min-h-screen pb-12">
       <div className="border-b border-border bg-background">
@@ -32,6 +89,17 @@ export function ModelPlaceholder({ model }: { model: ModelDetail }) {
       </div>
 
       <div className="mx-auto max-w-6xl px-4 pt-6">
+        {/* Version selector */}
+        {model.versions.length > 1 && selectedVersion && (
+          <div className="mb-6">
+            <VersionSelector
+              versions={model.versions}
+              selected={selectedVersion}
+              onSelect={setSelectedVersion}
+            />
+          </div>
+        )}
+
         {/* Gradient placeholder */}
         <div className="mb-8 aspect-video rounded-xl bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 flex items-center justify-center border border-border">
           <div className="text-center text-muted">
@@ -54,14 +122,14 @@ export function ModelPlaceholder({ model }: { model: ModelDetail }) {
             <div className="flex items-center gap-3">
               <span className="w-24 text-muted">Filename</span>
               <span className="font-mono text-foreground/80">
-                {model.filePath.split("/").pop()}
+                {(selectedVersion?.localPath ?? model.filePath).split("/").pop()}
               </span>
             </div>
-            {model.fileSize && (
+            {(selectedVersion?.localFileSize ?? model.fileSize) && (
               <div className="flex items-center gap-3">
                 <span className="w-24 text-muted">Size</span>
                 <span className="text-foreground/80">
-                  {formatFileSize(model.fileSize)}
+                  {formatFileSize(selectedVersion?.localFileSize ?? model.fileSize ?? 0)}
                 </span>
               </div>
             )}
@@ -72,7 +140,7 @@ export function ModelPlaceholder({ model }: { model: ModelDetail }) {
             <div className="flex items-center gap-3">
               <span className="w-24 text-muted">Path</span>
               <span className="font-mono text-xs text-foreground/60 break-all">
-                {model.filePath}
+                {selectedVersion?.localPath ?? model.filePath}
               </span>
             </div>
           </div>
