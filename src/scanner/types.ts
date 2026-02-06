@@ -117,4 +117,5 @@ export interface ScannedModelEntry {
   }>;
   category: string;
   subcategory?: string;
+  epoch?: number; // For locally-trained models with epoch variants
 }

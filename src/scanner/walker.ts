@@ -6,6 +6,32 @@ const SAFETENSORS_EXT = ".safetensors";
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 const FILENAME_PATTERN = /^(.+)-mid_(\d+)-vid_(\d+)\.safetensors$/;
 
+// Patterns to detect epoch in filename (captures base name and epoch number)
+const EPOCH_PATTERNS = [
+  /^(.+?)[-_]e(\d+)$/i,           // model_name-e10, model_name_e20
+  /^(.+?)[-_]epoch[-_]?(\d+)$/i,  // model_name-epoch10, model_name_epoch_20
+  /^(.+?)[-_](\d+)$/,             // model_name-10, model_name_20 (number at end)
+];
+
+interface EpochInfo {
+  baseName: string;
+  epoch: number;
+}
+
+function parseEpochFromFilename(filename: string): EpochInfo | null {
+  for (const pattern of EPOCH_PATTERNS) {
+    const match = filename.match(pattern);
+    if (match) {
+      const epoch = parseInt(match[2], 10);
+      // Sanity check: epochs are typically 1-1000
+      if (epoch >= 1 && epoch <= 1000) {
+        return { baseName: match[1], epoch };
+      }
+    }
+  }
+  return null;
+}
+
 function findImages(
   dir: string
 ): Array<{ path: string; sidecar?: ImageSidecar }> {
@@ -144,15 +170,39 @@ export function walkModelDirectory(modelDir: string): ScannedModelEntry[] {
         });
       } else {
         // No CivitAI pattern — synthetic entry
-        const syntheticId = hashPath(relativePath);
-        entries.push({
-          safetensorsPath: fullPath,
-          modelId: syntheticId,
-          modelName: path.basename(entry.name, SAFETENSORS_EXT),
-          localImages: [],
-          category,
-          subcategory,
-        });
+        const baseName = path.basename(entry.name, SAFETENSORS_EXT);
+        const epochInfo = parseEpochFromFilename(baseName);
+
+        if (epochInfo) {
+          // Epoch variant: group by base name
+          // Use directory + base name for model ID so all epochs share the same model
+          const modelKey = path.join(path.dirname(relativePath), epochInfo.baseName);
+          const syntheticModelId = hashPath(modelKey);
+          // Use epoch as synthetic version ID (offset to avoid collisions)
+          const syntheticVersionId = syntheticModelId + epochInfo.epoch;
+
+          entries.push({
+            safetensorsPath: fullPath,
+            modelId: syntheticModelId,
+            versionId: syntheticVersionId,
+            modelName: epochInfo.baseName,
+            localImages: [],
+            category,
+            subcategory,
+            epoch: epochInfo.epoch,
+          });
+        } else {
+          // Regular file without epoch
+          const syntheticId = hashPath(relativePath);
+          entries.push({
+            safetensorsPath: fullPath,
+            modelId: syntheticId,
+            modelName: baseName,
+            localImages: [],
+            category,
+            subcategory,
+          });
+        }
       }
     }
   }

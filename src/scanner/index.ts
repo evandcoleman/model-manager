@@ -169,11 +169,15 @@ export async function runScanner(config: AppConfig): Promise<ScanResult> {
       if (entry.versionId && !insertedVersionIds.has(entry.versionId)) {
         insertedVersionIds.add(entry.versionId);
         const stats = fs.statSync(entry.safetensorsPath);
+
+        // Use epoch as version name if present, otherwise "Local"
+        const versionName = entry.epoch != null ? `Epoch ${entry.epoch}` : "Local";
+
         db.insert(modelVersions)
           .values({
             id: entry.versionId,
             modelId,
-            name: "Local",
+            name: versionName,
             baseModel: null,
             description: null,
             stats: {},
