@@ -66,6 +66,18 @@ CREATE TABLE IF NOT EXISTS images (
 );
 `;
 
+// Migrations to run on existing databases
+const MIGRATIONS: Array<{ name: string; sql: string }> = [
+  {
+    name: "add_local_path_to_model_versions",
+    sql: "ALTER TABLE model_versions ADD COLUMN local_path TEXT",
+  },
+  {
+    name: "add_local_file_size_to_model_versions",
+    sql: "ALTER TABLE model_versions ADD COLUMN local_file_size REAL",
+  },
+];
+
 export function initDatabase(): void {
   const config = getConfig();
   const dbPath = config.dbPath;
@@ -80,6 +92,21 @@ export function initDatabase(): void {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   sqlite.exec(SCHEMA_SQL);
+
+  // Run migrations (ignore errors if column already exists)
+  for (const migration of MIGRATIONS) {
+    try {
+      sqlite.exec(migration.sql);
+      console.log(`Migration applied: ${migration.name}`);
+    } catch (err) {
+      // Ignore "duplicate column" errors
+      const message = err instanceof Error ? err.message : String(err);
+      if (!message.includes("duplicate column")) {
+        throw err;
+      }
+    }
+  }
+
   sqlite.close();
   console.log("Database initialized.");
 }
