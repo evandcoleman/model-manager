@@ -273,6 +273,7 @@ export function getModelById(db: DB, id: number): ModelDetail | null {
       blurhash: img.blurhash,
       sortOrder: img.sortOrder ?? 0,
       isUserUpload: true,
+      createdAt: img.createdAt,
     }));
 
   // Create a map of version-specific user images
@@ -292,6 +293,7 @@ export function getModelById(db: DB, id: number): ModelDetail | null {
         blurhash: img.blurhash,
         sortOrder: img.sortOrder ?? 0,
         isUserUpload: true,
+        createdAt: img.createdAt,
       });
       versionUserImagesMap.set(img.versionId, existing);
     }

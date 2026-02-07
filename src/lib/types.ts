@@ -107,6 +107,7 @@ export interface ImageInfo {
   blurhash: string | null;
   sortOrder: number;
   isUserUpload?: boolean;
+  createdAt?: string | null;
 }
 
 export interface GenerationParams {

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, ChevronLeft, ChevronRight, Copy, Check, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Copy, Check, ChevronDown, ChevronUp, Trash2, Calendar } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useNsfw } from "../providers/nsfw-provider";
 import type { ImageInfo, GenerationParams } from "../../lib/types";
+import { apiFetch } from "../../lib/api-client";
 
 function imageUrl(path: string | null | undefined): string | null {
   if (!path) return null;
@@ -29,12 +30,27 @@ function ParamRow({
   );
 }
 
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function GenerationParamsPanel({
   params,
   prompt,
+  isUserUpload,
+  createdAt,
 }: {
   params: GenerationParams | null;
   prompt: string | null;
+  isUserUpload?: boolean;
+  createdAt?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
   const [workflowExpanded, setWorkflowExpanded] = useState(false);
@@ -55,11 +71,25 @@ function GenerationParamsPanel({
     setTimeout(() => setWorkflowCopied(false), 2000);
   }, [params?.comfyWorkflow]);
 
-  if (!params && !displayPrompt) return null;
+  if (!params && !displayPrompt && !isUserUpload) return null;
 
   return (
     <div className="flex h-full w-80 shrink-0 flex-col border-l border-border bg-card overflow-y-auto">
       <div className="p-4">
+        {isUserUpload && (
+          <div className="mb-4 pb-4 border-b border-border">
+            <div className="flex items-center gap-2 text-xs text-accent">
+              <span className="px-2 py-0.5 rounded bg-accent/10">User Upload</span>
+            </div>
+            {createdAt && (
+              <div className="flex items-center gap-1.5 mt-2 text-xs text-muted">
+                <Calendar className="h-3 w-3" />
+                <span>Uploaded {formatDate(createdAt)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted mb-4">
           Generation Parameters
         </h3>
@@ -224,7 +254,7 @@ export function Lightbox({ images, initialIndex, onClose, modelId, onDelete }: L
 
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/models/${modelId}/images/${current.id}`, {
+      const res = await apiFetch(`/api/v1/models/${modelId}/images/${current.id}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -360,6 +390,8 @@ export function Lightbox({ images, initialIndex, onClose, modelId, onDelete }: L
       <GenerationParamsPanel
         params={current.generationParams}
         prompt={current.prompt}
+        isUserUpload={current.isUserUpload}
+        createdAt={current.createdAt}
       />
 
       {/* Image counter */}
