@@ -248,7 +248,7 @@ export function ModelPlaceholder({ model }: { model: ModelDetail }) {
           </div>
 
           {displayImages.length > 0 ? (
-            <ImageGallery images={displayImages} />
+            <ImageGallery images={displayImages} modelId={model.id} onImageDeleted={() => router.refresh()} />
           ) : (
             <div
               onDragOver={handleDragOver}

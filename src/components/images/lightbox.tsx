@@ -268,9 +268,15 @@ export function Lightbox({ images, initialIndex, onClose, modelId, onDelete }: L
   const { isBlurred, revealedIds, toggleReveal } = useNsfw();
 
   const handleDelete = useCallback(async () => {
-    if (!modelId || !onDelete) return;
+    if (!modelId || !onDelete) {
+      console.error("Delete failed: missing modelId or onDelete callback");
+      return;
+    }
     const current = images[index];
-    if (!current?.isUserUpload) return;
+    if (!current?.isUserUpload) {
+      console.error("Delete failed: image is not a user upload");
+      return;
+    }
 
     if (!confirm("Delete this image?")) return;
 
@@ -287,9 +293,14 @@ export function Lightbox({ images, initialIndex, onClose, modelId, onDelete }: L
         } else if (index >= images.length - 1) {
           setIndex(index - 1);
         }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        console.error("Delete failed:", res.status, data);
+        alert(`Failed to delete image: ${data.error || res.statusText}`);
       }
     } catch (err) {
       console.error("Failed to delete image:", err);
+      alert(`Failed to delete image: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setIsDeleting(false);
     }
