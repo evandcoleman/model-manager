@@ -7,6 +7,7 @@ import { Search, Settings, RefreshCw, Eye, User, LogOut, Download } from "lucide
 import { useNsfw } from "../providers/nsfw-provider";
 import { cn } from "../../lib/utils";
 import { DownloadDialog } from "../downloads/download-dialog";
+import { clearApiKeyCache } from "../../lib/api-client";
 
 interface TopBarProps {
   search: string;
@@ -37,6 +38,7 @@ export function TopBar({
   const settingsRef = useRef<HTMLDivElement>(null);
 
   async function handleLogout() {
+    clearApiKeyCache();
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();

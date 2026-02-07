@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Check, X, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Check, X } from "lucide-react";
+import { apiFetch } from "@/lib/api-client";
 
 type TokenService = "civitai" | "huggingface";
 
@@ -151,7 +152,7 @@ export function TokenSettings() {
   }, []);
 
   async function fetchTokens() {
-    const res = await fetch("/api/settings/tokens");
+    const res = await apiFetch("/api/v1/settings/tokens");
     if (res.ok) {
       const data = await res.json();
       setTokens(data);
@@ -159,9 +160,8 @@ export function TokenSettings() {
   }
 
   async function handleSave(service: TokenService, token: string) {
-    const res = await fetch("/api/settings/tokens", {
+    const res = await apiFetch("/api/v1/settings/tokens", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ service, token }),
     });
     if (res.ok) {
@@ -171,7 +171,7 @@ export function TokenSettings() {
   }
 
   async function handleDelete(service: TokenService) {
-    const res = await fetch(`/api/settings/tokens/${service}`, {
+    const res = await apiFetch(`/api/v1/settings/tokens/${service}`, {
       method: "DELETE",
     });
     if (res.ok) {

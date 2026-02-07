@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Copy, RefreshCw, Check } from "lucide-react";
 import Link from "next/link";
 import { TokenSettings } from "@/components/settings/token-settings";
+import { clearApiKeyCache } from "@/lib/api-client";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -48,8 +49,8 @@ export default function AccountPage() {
       return;
     }
 
-    if (newPassword.length < 4) {
-      setPasswordError("Password must be at least 4 characters");
+    if (newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
       return;
     }
 
@@ -101,6 +102,7 @@ export default function AccountPage() {
   }
 
   async function handleLogout() {
+    clearApiKeyCache();
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();

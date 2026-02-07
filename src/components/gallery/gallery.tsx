@@ -6,6 +6,7 @@ import { TopBar } from "../layout/top-bar";
 import { FilterBar, type ActiveFilters } from "../layout/filter-bar";
 import { ModelGrid } from "../models/model-grid";
 import type { ModelListItem, FilterOptions, PaginatedResult } from "../../lib/types";
+import { apiFetch } from "../../lib/api-client";
 
 interface GalleryProps {
   initialData: PaginatedResult<ModelListItem>;
@@ -54,7 +55,7 @@ export function Gallery({ initialData, initialFilters }: GalleryProps) {
         params.set("page", String(pageNum));
         params.set("limit", "40");
 
-        const res = await fetch(`/api/models?${params}`);
+        const res = await apiFetch(`/api/v1/models?${params}`);
         const data: PaginatedResult<ModelListItem> = await res.json();
 
         if (append) {
@@ -147,9 +148,9 @@ export function Gallery({ initialData, initialFilters }: GalleryProps) {
   const handleRescan = useCallback(async () => {
     setIsScanning(true);
     try {
-      await fetch("/api/scan", { method: "POST" });
+      await apiFetch("/api/v1/scan", { method: "POST" });
       // Refresh filter options and models
-      const filtersRes = await fetch("/api/models/filters");
+      const filtersRes = await apiFetch("/api/v1/models/filters");
       const newFilters: FilterOptions = await filtersRes.json();
       setFilterOptions(newFilters);
       await fetchModels(1);

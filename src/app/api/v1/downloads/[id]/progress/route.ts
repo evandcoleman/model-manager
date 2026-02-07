@@ -1,9 +1,26 @@
+import { NextRequest } from "next/server";
 import { getJobManager } from "@/lib/download/job-manager";
+import { validateApiKey } from "@/lib/api-key";
 
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Validate API key for SSE endpoint
+  // Accept via header (preferred) or query param (for EventSource which doesn't support headers)
+  let token: string | null = null;
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    token = authHeader.slice(7);
+  } else {
+    token = request.nextUrl.searchParams.get("key");
+  }
+
+  if (!token || !validateApiKey(token)) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const { id } = await params;
   const jobManager = getJobManager();
   const job = jobManager.getJob(id);

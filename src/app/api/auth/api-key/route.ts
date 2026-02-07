@@ -12,9 +12,10 @@ export async function GET() {
   }
 
   const key = getApiKey();
-  // Return masked key for display
   const maskedKey = key.slice(0, 8) + "..." + key.slice(-8);
 
+  // Return both key (for API client use) and maskedKey (for display)
+  // This is safe because this endpoint is session-authenticated
   return NextResponse.json({ key, maskedKey });
 }
 

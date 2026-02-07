@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
-import { getConfig } from "../../../lib/config";
-import { runScanner } from "../../../scanner";
+import { NextRequest, NextResponse } from "next/server";
+import { getConfig } from "../../../../lib/config";
+import { runScanner } from "../../../../scanner";
+import { withApiAuth } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+async function handler(_request: NextRequest) {
   try {
     const config = getConfig();
     const result = await runScanner(config);
@@ -17,3 +18,5 @@ export async function POST() {
     );
   }
 }
+
+export const POST = withApiAuth(handler);

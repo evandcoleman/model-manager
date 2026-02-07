@@ -38,13 +38,16 @@ export function getNsfwLabel(level: number): string {
   return NSFW_LABELS[highest] ?? `NSFW (${level})`;
 }
 
+import DOMPurify from "isomorphic-dompurify";
+
 export function sanitizeHtml(html: string): string {
-  // Allow basic formatting tags, strip everything else
-  return html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/on\w+="[^"]*"/gi, "")
-    .replace(/on\w+='[^']*'/gi, "")
-    .replace(/javascript:/gi, "");
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "b", "em", "i", "u", "a", "ul", "ol", "li",
+      "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "code", "pre"
+    ],
+    ALLOWED_ATTR: ["href", "target", "rel"],
+  });
 }
 
 export function formatSizeKb(sizeKb: number | null | undefined): string {

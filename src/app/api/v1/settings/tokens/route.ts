@@ -1,12 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   getTokens,
   setToken,
   getMaskedToken,
   type TokenService,
 } from "@/lib/tokens";
+import { withApiAuth } from "@/lib/api-auth";
 
-export async function GET() {
+async function getHandler(_request: NextRequest) {
   const tokens = getTokens();
   const masked: Record<string, string | null> = {
     civitai: tokens.civitai ? getMaskedToken(tokens.civitai) : null,
@@ -15,7 +16,7 @@ export async function GET() {
   return NextResponse.json(masked);
 }
 
-export async function PUT(request: Request) {
+async function putHandler(request: NextRequest) {
   const body = await request.json();
   const { service, token } = body as { service: TokenService; token: string };
 
@@ -33,3 +34,6 @@ export async function PUT(request: Request) {
   setToken(service, token);
   return NextResponse.json({ success: true, masked: getMaskedToken(token) });
 }
+
+export const GET = withApiAuth(getHandler);
+export const PUT = withApiAuth(putHandler);

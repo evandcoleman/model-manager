@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { randomBytes, timingSafeEqual } from "crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
 import { getConfig } from "./config";
@@ -33,5 +33,10 @@ export function regenerateApiKey(): string {
 }
 
 export function validateApiKey(providedKey: string): boolean {
-  return providedKey === getApiKey();
+  const storedKey = getApiKey();
+  // Use timing-safe comparison to prevent timing attacks
+  if (providedKey.length !== storedKey.length) {
+    return false;
+  }
+  return timingSafeEqual(Buffer.from(providedKey), Buffer.from(storedKey));
 }

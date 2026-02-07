@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getJobManager } from "@/lib/download/job-manager";
+import { withApiAuth } from "@/lib/api-auth";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+type RouteContext = { params: Promise<{ id: string }> };
+
+async function getHandler(_request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const jobManager = getJobManager();
   const job = jobManager.getJob(id);
@@ -16,10 +16,7 @@ export async function GET(
   return NextResponse.json({ job });
 }
 
-export async function POST(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+async function postHandler(_request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const jobManager = getJobManager();
 
@@ -45,10 +42,7 @@ export async function POST(
   return NextResponse.json({ job, message: "Download restarted" });
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+async function deleteHandler(_request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   const jobManager = getJobManager();
   const cancelled = jobManager.cancelJob(id);
@@ -68,3 +62,7 @@ export async function DELETE(
     status: job.status,
   });
 }
+
+export const GET = withApiAuth(getHandler);
+export const POST = withApiAuth(postHandler);
+export const DELETE = withApiAuth(deleteHandler);

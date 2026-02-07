@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { clearToken, type TokenService } from "@/lib/tokens";
+import { withApiAuth } from "@/lib/api-auth";
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ service: string }> }
-) {
+type RouteContext = { params: Promise<{ service: string }> };
+
+async function deleteHandler(_request: NextRequest, { params }: RouteContext) {
   const { service } = await params;
 
   if (!["civitai", "huggingface"].includes(service)) {
@@ -14,3 +14,5 @@ export async function DELETE(
   clearToken(service as TokenService);
   return NextResponse.json({ success: true });
 }
+
+export const DELETE = withApiAuth(deleteHandler);

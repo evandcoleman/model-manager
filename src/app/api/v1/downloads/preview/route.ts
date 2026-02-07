@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "@/lib/tokens";
 import {
   fetchCivArchiveMetadata,
@@ -10,8 +10,9 @@ import {
   isHuggingFaceUrl,
 } from "@/lib/download/sources/huggingface";
 import type { SourceMetadata } from "@/lib/download/types";
+import { withApiAuth } from "@/lib/api-auth";
 
-export async function POST(request: Request) {
+async function handler(request: NextRequest) {
   try {
     const body = await request.json();
     const { url } = body as { url: string };
@@ -59,3 +60,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withApiAuth(handler);

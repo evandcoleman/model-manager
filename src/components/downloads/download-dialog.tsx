@@ -12,6 +12,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { DownloadProgressItem } from "./download-progress";
+import { apiFetch, createAuthenticatedEventSource } from "@/lib/api-client";
 
 interface DownloadProgress {
   downloaded: number;
@@ -126,7 +127,7 @@ export function DownloadDialog({
 
   async function fetchJobs() {
     try {
-      const res = await fetch("/api/downloads");
+      const res = await apiFetch("/api/v1/downloads");
       if (res.ok) {
         const data = await res.json();
         const relevant = data.jobs.filter(
@@ -176,23 +177,29 @@ export function DownloadDialog({
     [onDownloadComplete]
   );
 
-  function subscribeToJob(jobId: string) {
-    const eventSource = new EventSource(`/api/downloads/${jobId}/progress`);
+  async function subscribeToJob(jobId: string) {
+    try {
+      const eventSource = await createAuthenticatedEventSource(
+        `/api/v1/downloads/${jobId}/progress`
+      );
 
-    eventSource.onmessage = (event) => {
-      try {
-        const job = JSON.parse(event.data);
-        handleJobUpdate(job);
-      } catch {
-        // Ignore parse errors
-      }
-    };
+      eventSource.onmessage = (event) => {
+        try {
+          const job = JSON.parse(event.data);
+          handleJobUpdate(job);
+        } catch {
+          // Ignore parse errors
+        }
+      };
 
-    eventSource.onerror = () => {
-      eventSource.close();
-    };
+      eventSource.onerror = () => {
+        eventSource.close();
+      };
 
-    return () => eventSource.close();
+      return () => eventSource.close();
+    } catch {
+      // Ignore auth errors for SSE
+    }
   }
 
   function handleUrlChange(value: string) {
@@ -209,9 +216,8 @@ export function DownloadDialog({
     setError(null);
 
     try {
-      const res = await fetch("/api/downloads/preview", {
+      const res = await apiFetch("/api/v1/downloads/preview", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
       });
 
@@ -242,9 +248,8 @@ export function DownloadDialog({
       baseModel === "__custom__" ? customBaseModel : baseModel;
 
     try {
-      const res = await fetch("/api/downloads", {
+      const res = await apiFetch("/api/v1/downloads", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url: url.trim(),
           modelType: modelType || undefined,
@@ -277,7 +282,7 @@ export function DownloadDialog({
 
   async function handleCancel(jobId: string) {
     try {
-      await fetch(`/api/downloads/${jobId}`, { method: "DELETE" });
+      await apiFetch(`/api/v1/downloads/${jobId}`, { method: "DELETE" });
     } catch {
       // Ignore errors
     }
@@ -285,7 +290,7 @@ export function DownloadDialog({
 
   async function handleRetry(jobId: string) {
     try {
-      const res = await fetch(`/api/downloads/${jobId}`, { method: "POST" });
+      const res = await apiFetch(`/api/v1/downloads/${jobId}`, { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         handleJobUpdate(data.job);

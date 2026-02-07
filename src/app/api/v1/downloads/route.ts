@@ -1,11 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getJobManager } from "@/lib/download/job-manager";
-
-export async function GET() {
-  const jobManager = getJobManager();
-  const jobs = jobManager.getAllJobs();
-  return NextResponse.json({ jobs });
-}
+import { withApiAuth } from "@/lib/api-auth";
 
 export interface CreateJobOptions {
   url: string;
@@ -14,7 +9,13 @@ export interface CreateJobOptions {
   baseModel?: string;
 }
 
-export async function POST(request: Request) {
+async function getHandler(_request: NextRequest) {
+  const jobManager = getJobManager();
+  const jobs = jobManager.getAllJobs();
+  return NextResponse.json({ jobs });
+}
+
+async function postHandler(request: NextRequest) {
   try {
     const body = (await request.json()) as CreateJobOptions;
     const { url, outputDir, modelType, baseModel } = body;
@@ -50,8 +51,12 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE() {
+async function deleteHandler(_request: NextRequest) {
   const jobManager = getJobManager();
   jobManager.clearCompleted();
   return NextResponse.json({ success: true });
 }
+
+export const GET = withApiAuth(getHandler);
+export const POST = withApiAuth(postHandler);
+export const DELETE = withApiAuth(deleteHandler);
