@@ -251,12 +251,16 @@ export function getModelById(db: DB, id: number): ModelDetail | null {
     .get();
 
   // Get user-uploaded images for this model
-  const userUploadedImages = db
+  const allUserImages = db
     .select()
     .from(userImages)
     .where(eq(userImages.modelId, id))
     .orderBy(asc(userImages.sortOrder))
-    .all()
+    .all();
+
+  // Separate model-level images (no versionId) from version-specific images
+  const modelLevelImages = allUserImages
+    .filter((img) => img.versionId == null)
     .map((img) => ({
       id: img.id,
       localPath: img.localPath,
@@ -270,6 +274,28 @@ export function getModelById(db: DB, id: number): ModelDetail | null {
       sortOrder: img.sortOrder ?? 0,
       isUserUpload: true,
     }));
+
+  // Create a map of version-specific user images
+  const versionUserImagesMap = new Map<number, ImageInfo[]>();
+  for (const img of allUserImages) {
+    if (img.versionId != null) {
+      const existing = versionUserImagesMap.get(img.versionId) ?? [];
+      existing.push({
+        id: img.id,
+        localPath: img.localPath,
+        thumbPath: img.thumbPath,
+        width: img.width,
+        height: img.height,
+        nsfwLevel: img.nsfwLevel ?? 0,
+        prompt: img.prompt,
+        generationParams: img.generationParams as ImageInfo["generationParams"],
+        blurhash: img.blurhash,
+        sortOrder: img.sortOrder ?? 0,
+        isUserUpload: true,
+      });
+      versionUserImagesMap.set(img.versionId, existing);
+    }
+  }
 
   const versions = db
     .select()
@@ -311,8 +337,12 @@ export function getModelById(db: DB, id: number): ModelDetail | null {
         isUserUpload: false,
       }));
 
-    // Merge user-uploaded images into the first version's images
-    // (user images are model-level, not version-specific)
+    // Get version-specific user images
+    const versionUserImages = versionUserImagesMap.get(v.id) ?? [];
+
+    // Combine: user uploads (version-specific + model-level) first, then metadata images
+    const allImages = [...versionUserImages, ...modelLevelImages, ...versionImages];
+
     return {
       id: v.id,
       name: v.name,
@@ -325,7 +355,7 @@ export function getModelById(db: DB, id: number): ModelDetail | null {
       localPath: v.localPath,
       localFileSize: v.localFileSize,
       files,
-      images: versionImages,
+      images: allImages,
     };
   });
 
@@ -335,14 +365,6 @@ export function getModelById(db: DB, id: number): ModelDetail | null {
     if (!a.isLocal && b.isLocal) return 1;
     return 0;
   });
-
-  // Add user-uploaded images to the first version (or create a synthetic version if none exist)
-  if (userUploadedImages.length > 0) {
-    if (versionDetails.length > 0) {
-      // Prepend user images to the first version's images
-      versionDetails[0].images = [...userUploadedImages, ...versionDetails[0].images];
-    }
-  }
 
   return {
     id: model.id,

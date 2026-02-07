@@ -78,6 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_user_notes_model_id ON user_notes(model_id);
 CREATE TABLE IF NOT EXISTS user_images (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   model_id INTEGER NOT NULL,
+  version_id INTEGER,
   local_path TEXT NOT NULL,
   thumb_path TEXT,
   width INTEGER,
@@ -91,6 +92,7 @@ CREATE TABLE IF NOT EXISTS user_images (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_images_model_id ON user_images(model_id);
+CREATE INDEX IF NOT EXISTS idx_user_images_version_id ON user_images(version_id);
 `;
 
 // Migrations to run on existing databases
@@ -102,6 +104,10 @@ const MIGRATIONS: Array<{ name: string; sql: string }> = [
   {
     name: "add_local_file_size_to_model_versions",
     sql: "ALTER TABLE model_versions ADD COLUMN local_file_size REAL",
+  },
+  {
+    name: "add_version_id_to_user_images",
+    sql: "ALTER TABLE user_images ADD COLUMN version_id INTEGER",
   },
 ];
 

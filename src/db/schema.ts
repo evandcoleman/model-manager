@@ -113,6 +113,7 @@ export const userNotes = sqliteTable("user_notes", {
 export const userImages = sqliteTable("user_images", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   modelId: integer("model_id").notNull(),
+  versionId: integer("version_id"),
   localPath: text("local_path").notNull(),
   thumbPath: text("thumb_path"),
   width: integer("width"),

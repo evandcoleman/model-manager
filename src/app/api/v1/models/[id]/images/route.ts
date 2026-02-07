@@ -120,6 +120,8 @@ async function postHandler(
   // Parse generation params from form data
   const prompt = formData.get("prompt") as string | null;
   const nsfwLevel = parseInt(formData.get("nsfwLevel") as string) || 0;
+  const versionIdStr = formData.get("versionId") as string | null;
+  const versionId = versionIdStr ? parseInt(versionIdStr, 10) : null;
 
   const generationParams: Record<string, unknown> = {};
 
@@ -173,6 +175,7 @@ async function postHandler(
     .insert(userImages)
     .values({
       modelId,
+      versionId,
       localPath: filePath,
       thumbPath,
       width,

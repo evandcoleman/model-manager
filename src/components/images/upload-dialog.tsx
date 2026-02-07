@@ -39,14 +39,21 @@ interface LoraEntry {
   strength: number;
 }
 
+interface VersionOption {
+  id: number;
+  name: string;
+}
+
 interface UploadDialogProps {
   file: File;
   modelId: number;
+  versions?: VersionOption[];
+  selectedVersionId?: number | null;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function UploadDialog({ file, modelId, onClose, onSuccess }: UploadDialogProps) {
+export function UploadDialog({ file, modelId, versions, selectedVersionId, onClose, onSuccess }: UploadDialogProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +69,9 @@ export function UploadDialog({ file, modelId, onClose, onSuccess }: UploadDialog
   const [nsfwLevel, setNsfwLevel] = useState(0);
   const [loras, setLoras] = useState<LoraEntry[]>([]);
   const [workflowJson, setWorkflowJson] = useState("");
+  const [uploadTarget, setUploadTarget] = useState<string>(
+    selectedVersionId != null ? String(selectedVersionId) : "model"
+  );
 
   // Generate preview URL
   useEffect(() => {
@@ -115,6 +125,11 @@ export function UploadDialog({ file, modelId, onClose, onSuccess }: UploadDialog
         if (validLoras.length > 0) {
           formData.append("loras", JSON.stringify(validLoras));
         }
+      }
+
+      // Add versionId if uploading to a specific version
+      if (uploadTarget !== "model") {
+        formData.append("versionId", uploadTarget);
       }
 
       if (workflowJson.trim()) {
@@ -173,6 +188,32 @@ export function UploadDialog({ file, modelId, onClose, onSuccess }: UploadDialog
 
           {/* Right: Form fields */}
           <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {/* Upload Target */}
+            {versions && versions.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-muted mb-1.5">
+                  Upload To
+                </label>
+                <select
+                  value={uploadTarget}
+                  onChange={(e) => setUploadTarget(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:border-accent focus:outline-none"
+                >
+                  <option value="model">All Versions (Model-level)</option>
+                  {versions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name} only
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-muted">
+                  {uploadTarget === "model"
+                    ? "Image will appear on all versions"
+                    : "Image will only appear on the selected version"}
+                </p>
+              </div>
+            )}
+
             {/* Prompt */}
             <div>
               <label className="block text-sm font-medium text-muted mb-1.5">
