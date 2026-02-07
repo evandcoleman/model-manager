@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Loader2, Image as ImageIcon, Box } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { useNsfw } from "@/components/providers/nsfw-provider";
@@ -38,6 +38,7 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
+    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
   });
 }
 
@@ -121,7 +122,7 @@ export function ImagesFeed() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1800px] px-4 py-6">
+      <main className="mx-auto max-w-2xl px-4 py-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted" />
@@ -132,78 +133,91 @@ export function ImagesFeed() {
             <p className="text-muted">No uploaded images yet</p>
           </div>
         ) : (
-          <>
-            <div className="columns-2 gap-4 sm:columns-3 lg:columns-4 xl:columns-5">
-              {images.map((img, index) => {
-                const thumbUrl = imageUrl(img.thumbPath);
-                const shouldBlur =
-                  isBlurred(img.nsfwLevel) && !revealedIds.has(img.id);
+          <div className="space-y-6">
+            {images.map((img, index) => {
+              const fullUrl = imageUrl(img.localPath);
+              const shouldBlur =
+                isBlurred(img.nsfwLevel) && !revealedIds.has(img.id);
 
-                if (!thumbUrl) return null;
+              if (!fullUrl) return null;
 
-                return (
-                  <div
-                    key={img.id}
-                    className="mb-4 break-inside-avoid"
-                  >
-                    <button
-                      onClick={() => {
-                        if (shouldBlur) {
-                          toggleReveal(img.id);
-                        } else {
-                          setLightboxIndex(index);
-                        }
-                      }}
-                      className="group relative block w-full overflow-hidden rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-                    >
-                      <img
-                        src={thumbUrl}
-                        alt={img.prompt?.slice(0, 80) ?? "Uploaded image"}
-                        className={cn(
-                          "w-full transition-all duration-300",
-                          shouldBlur && "blur-2xl scale-110",
-                          !shouldBlur &&
-                            "group-hover:brightness-110 group-hover:scale-[1.02]"
-                        )}
-                        loading="lazy"
-                        style={{
-                          aspectRatio:
-                            img.width && img.height
-                              ? `${img.width}/${img.height}`
-                              : undefined,
-                        }}
-                      />
-                      {shouldBlur && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                          <span className="rounded-lg bg-black/60 px-2.5 py-1 text-xs text-white/80">
-                            Click to reveal
-                          </span>
-                        </div>
+              return (
+                <article
+                  key={img.id}
+                  className="rounded-xl border border-border bg-card overflow-hidden"
+                >
+                  {/* Header */}
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10">
+                      <Box className="h-5 w-5 text-accent" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`/models/${img.modelId}${img.versionId ? `?version=${img.versionId}` : ""}`}
+                        className="font-medium text-foreground hover:text-accent transition-colors truncate block"
+                      >
+                        {img.modelName || "Unknown Model"}
+                      </Link>
+                      {img.modelType && (
+                        <span className="text-xs text-muted">{img.modelType}</span>
                       )}
-                      {!shouldBlur && (
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Link
-                            href={`/models/${img.modelId}${img.versionId ? `?version=${img.versionId}` : ""}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-xs text-white/90 hover:text-white font-medium truncate block"
-                          >
-                            {img.modelName || "Unknown Model"}
-                          </Link>
-                          {img.createdAt && (
-                            <span className="text-[10px] text-white/60">
-                              {formatDate(img.createdAt)}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </button>
+                    </div>
+                    {img.createdAt && (
+                      <span className="text-xs text-muted whitespace-nowrap">
+                        {formatDate(img.createdAt)}
+                      </span>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Image */}
+                  <button
+                    onClick={() => {
+                      if (shouldBlur) {
+                        toggleReveal(img.id);
+                      } else {
+                        setLightboxIndex(index);
+                      }
+                    }}
+                    className="relative block w-full focus:outline-none"
+                  >
+                    <img
+                      src={fullUrl}
+                      alt={img.prompt?.slice(0, 80) ?? "Uploaded image"}
+                      className={cn(
+                        "w-full transition-all duration-300",
+                        shouldBlur && "blur-2xl scale-105"
+                      )}
+                      loading="lazy"
+                      style={{
+                        aspectRatio:
+                          img.width && img.height
+                            ? `${img.width}/${img.height}`
+                            : undefined,
+                      }}
+                    />
+                    {shouldBlur && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <span className="rounded-lg bg-black/60 px-3 py-1.5 text-sm text-white/90">
+                          Click to reveal
+                        </span>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Footer - Prompt */}
+                  {img.prompt && (
+                    <div className="px-4 py-3 border-t border-border/50">
+                      <p className="text-sm text-foreground/80 line-clamp-3">
+                        {img.prompt}
+                      </p>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
 
             {hasMore && (
-              <div className="mt-8 text-center">
+              <div className="pt-4 pb-8 text-center">
                 <button
                   onClick={handleLoadMore}
                   disabled={loadingMore}
@@ -220,7 +234,7 @@ export function ImagesFeed() {
                 </button>
               </div>
             )}
-          </>
+          </div>
         )}
       </main>
 
