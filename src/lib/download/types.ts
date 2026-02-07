@@ -24,6 +24,8 @@ export interface DownloadJob {
   modelId?: number;
   versionId?: number;
   versionName?: string;
+  modelType?: string; // User override or detected
+  baseModel?: string; // User override or detected
   fileName?: string;
   filePath?: string;
   outputDir?: string;
@@ -34,6 +36,12 @@ export interface DownloadJob {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
+}
+
+export interface CreateJobOptions {
+  outputDir?: string;
+  modelType?: string;
+  baseModel?: string;
 }
 
 export interface SourceMetadata {

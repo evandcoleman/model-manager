@@ -7,10 +7,17 @@ export async function GET() {
   return NextResponse.json({ jobs });
 }
 
+export interface CreateJobOptions {
+  url: string;
+  outputDir?: string;
+  modelType?: string;
+  baseModel?: string;
+}
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { url, outputDir } = body as { url: string; outputDir?: string };
+    const body = (await request.json()) as CreateJobOptions;
+    const { url, outputDir, modelType, baseModel } = body;
 
     if (!url) {
       return NextResponse.json({ error: "url is required" }, { status: 400 });
@@ -29,7 +36,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const job = await jobManager.createJob(url, outputDir);
+    const job = await jobManager.createJob(url, {
+      outputDir,
+      modelType,
+      baseModel,
+    });
     return NextResponse.json({ job });
   } catch (err) {
     return NextResponse.json(

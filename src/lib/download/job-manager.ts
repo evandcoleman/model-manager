@@ -6,10 +6,8 @@ import type {
   DownloadJob,
   DownloadProgress,
   DownloadSource,
-  DownloadStatus,
   SourceMetadata,
-  TYPE_DIR_MAP,
-  BASE_MODEL_DIR_MAP,
+  CreateJobOptions,
 } from "./types";
 import { downloadFile, downloadToBuffer, HttpError } from "./downloader";
 import {
@@ -95,7 +93,10 @@ class JobManager {
     return null;
   }
 
-  async createJob(url: string, outputDir?: string): Promise<DownloadJob> {
+  async createJob(
+    url: string,
+    options: CreateJobOptions = {}
+  ): Promise<DownloadJob> {
     const source = this.detectSource(url);
     if (!source) {
       throw new Error("Unsupported URL. Supported: civarchive, civitai, huggingface");
@@ -109,7 +110,9 @@ class JobManager {
       url,
       source,
       status: "pending",
-      outputDir,
+      outputDir: options.outputDir,
+      modelType: options.modelType,
+      baseModel: options.baseModel,
       progress: {
         downloaded: 0,
         total: 0,
@@ -218,15 +221,25 @@ class JobManager {
 
         const modelDir = getConfig().modelDir;
         const modelNameClean = metadata.modelName.replace(/[<>:"/\\|?*]/g, "");
+
+        // Use user overrides if provided, otherwise use detected values
+        const effectiveModelType = job.modelType || metadata.modelType;
+        const effectiveBaseModel = job.baseModel || metadata.baseModel;
+
+        // Store effective values on job for display
+        job.modelType = effectiveModelType;
+        job.baseModel = effectiveBaseModel;
+
         let outputDir: string;
 
-        if (job.outputDir) {
+        if (job.outputDir && !job.modelType && !job.baseModel) {
+          // User provided explicit output dir
           outputDir = path.join(path.resolve(job.outputDir), modelNameClean);
         } else {
-          const typeDir = TYPE_DIR_MAP[metadata.modelType] ?? "other";
+          const typeDir = TYPE_DIR_MAP[effectiveModelType] ?? "other";
           const baseModelDir =
-            BASE_MODEL_DIR_MAP[metadata.baseModel ?? ""] ??
-            metadata.baseModel?.toLowerCase().replace(/[^a-z0-9]+/g, "_") ??
+            BASE_MODEL_DIR_MAP[effectiveBaseModel ?? ""] ??
+            effectiveBaseModel?.toLowerCase().replace(/[^a-z0-9]+/g, "_") ??
             "unknown";
           outputDir = path.join(modelDir, typeDir, baseModelDir, modelNameClean);
         }
