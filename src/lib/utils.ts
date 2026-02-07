@@ -38,10 +38,19 @@ export function getNsfwLabel(level: number): string {
   return NSFW_LABELS[highest] ?? `NSFW (${level})`;
 }
 
-import DOMPurify from "isomorphic-dompurify";
+let _DOMPurify: typeof import("isomorphic-dompurify").default | null = null;
+
+function getDOMPurify() {
+  if (!_DOMPurify) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _DOMPurify = require("isomorphic-dompurify").default;
+  }
+  return _DOMPurify!;
+}
 
 export function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, {
+  if (typeof window === "undefined") return html;
+  return getDOMPurify().sanitize(html, {
     ALLOWED_TAGS: [
       "p", "br", "strong", "b", "em", "i", "u", "a", "ul", "ol", "li",
       "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "code", "pre"

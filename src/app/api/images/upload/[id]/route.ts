@@ -20,20 +20,22 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Check for API key in header OR valid session cookie
-  const authHeader = request.headers.get("Authorization");
-  const sessionCookie = request.cookies.get("mm_session")?.value;
+  // Skip auth in desktop mode
+  if (process.env.DESKTOP_MODE !== "true") {
+    const authHeader = request.headers.get("Authorization");
+    const sessionCookie = request.cookies.get("mm_session")?.value;
 
-  let authenticated = false;
+    let authenticated = false;
 
-  if (authHeader?.startsWith("Bearer ")) {
-    authenticated = validateApiKey(authHeader.slice(7));
-  } else if (sessionCookie) {
-    authenticated = validateSession(sessionCookie);
-  }
+    if (authHeader?.startsWith("Bearer ")) {
+      authenticated = validateApiKey(authHeader.slice(7));
+    } else if (sessionCookie) {
+      authenticated = validateSession(sessionCookie);
+    }
 
-  if (!authenticated) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!authenticated) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   const { id } = await params;
