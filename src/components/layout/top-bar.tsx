@@ -8,7 +8,7 @@ import { useNsfw } from "../providers/nsfw-provider";
 import { cn } from "../../lib/utils";
 import { DownloadDialog } from "../downloads/download-dialog";
 import { clearApiKeyCache } from "../../lib/api-client";
-import { isDesktop } from "../../lib/desktop";
+import { isDesktop, isDesktopMode } from "../../lib/desktop";
 
 interface TopBarProps {
   search: string;
@@ -65,11 +65,11 @@ export function TopBar({
   return (
     <header className={cn(
       "fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl",
-      isDesktop && "desktop-drag"
+      isDesktopMode && "desktop-drag"
     )}>
       <div className={cn(
         "mx-auto flex h-14 max-w-[1800px] items-center gap-4 px-4",
-        isDesktop && "pl-20"
+        isDesktopMode && "pl-20"
       )}>
         <h1 className="text-lg font-semibold tracking-tight whitespace-nowrap">
           Model Manager
