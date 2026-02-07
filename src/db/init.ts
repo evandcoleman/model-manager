@@ -92,7 +92,6 @@ CREATE TABLE IF NOT EXISTS user_images (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_images_model_id ON user_images(model_id);
-CREATE INDEX IF NOT EXISTS idx_user_images_version_id ON user_images(version_id);
 `;
 
 // Migrations to run on existing databases
@@ -108,6 +107,10 @@ const MIGRATIONS: Array<{ name: string; sql: string }> = [
   {
     name: "add_version_id_to_user_images",
     sql: "ALTER TABLE user_images ADD COLUMN version_id INTEGER",
+  },
+  {
+    name: "add_version_id_index_to_user_images",
+    sql: "CREATE INDEX IF NOT EXISTS idx_user_images_version_id ON user_images(version_id)",
   },
 ];
 
