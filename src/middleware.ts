@@ -11,6 +11,8 @@ const PUBLIC_PATHS = [
 ];
 
 export function middleware(request: NextRequest) {
+  if (process.env.DESKTOP_MODE === "true") return NextResponse.next();
+
   const { pathname } = request.nextUrl;
 
   // Skip middleware for public paths

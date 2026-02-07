@@ -50,3 +50,12 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #3a3a3d;
 }
+
+/* Desktop app: make header areas draggable for window movement */
+.desktop-drag {
+  -webkit-app-region: drag;
+}
+
+.desktop-no-drag {
+  -webkit-app-region: no-drag;
+}

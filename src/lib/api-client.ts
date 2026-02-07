@@ -28,16 +28,20 @@ export interface ApiRequestOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
 }
 
+const isDesktop = process.env.NEXT_PUBLIC_DESKTOP_MODE === "true";
+
 export async function apiFetch(
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<Response> {
-  const apiKey = await getApiKey();
-
   const headers: Record<string, string> = {
     ...options.headers,
-    Authorization: `Bearer ${apiKey}`,
   };
+
+  if (!isDesktop) {
+    const apiKey = await getApiKey();
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
 
   // Add Content-Type for JSON bodies
   if (options.body && typeof options.body === "string") {
@@ -58,8 +62,10 @@ export async function apiFetch(
 export async function createAuthenticatedEventSource(
   path: string
 ): Promise<EventSource> {
-  const apiKey = await getApiKey();
   const url = new URL(path, window.location.origin);
-  url.searchParams.set("key", apiKey);
+  if (!isDesktop) {
+    const apiKey = await getApiKey();
+    url.searchParams.set("key", apiKey);
+  }
   return new EventSource(url.toString());
 }

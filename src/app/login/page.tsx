@@ -1,6 +1,11 @@
+import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/login-form";
 
 export default function LoginPage() {
+  if (process.env.DESKTOP_MODE === "true") {
+    redirect("/");
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
