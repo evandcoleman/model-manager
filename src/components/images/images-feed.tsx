@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Image as ImageIcon, Box } from "lucide-react";
+import { ArrowLeft, Loader2, Image as ImageIcon, Box, LayoutGrid, List } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { useNsfw } from "@/components/providers/nsfw-provider";
 import { Lightbox } from "@/components/images/lightbox";
 import type { ImageInfo } from "@/lib/types";
+
+type ViewMode = "feed" | "grid";
 
 interface FeedImage extends ImageInfo {
   modelId: number;
@@ -48,7 +50,18 @@ export function ImagesFeed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("uploads-view-mode") as ViewMode) || "feed";
+    }
+    return "feed";
+  });
   const { isBlurred, revealedIds, toggleReveal } = useNsfw();
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem("uploads-view-mode", mode);
+  };
 
   const fetchImages = useCallback(async (offset = 0, append = false) => {
     if (offset === 0) {
@@ -119,10 +132,39 @@ export function ImagesFeed() {
             <ImageIcon className="h-5 w-5 text-accent" />
             <h1 className="text-lg font-semibold tracking-tight">Recent Uploads</h1>
           </div>
+          <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+            <button
+              onClick={() => handleViewModeChange("feed")}
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                viewMode === "feed"
+                  ? "bg-accent text-white"
+                  : "text-muted hover:text-foreground"
+              )}
+              title="Feed view"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleViewModeChange("grid")}
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                viewMode === "grid"
+                  ? "bg-accent text-white"
+                  : "text-muted hover:text-foreground"
+              )}
+              title="Grid view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-6">
+      <main className={cn(
+        "mx-auto px-4 py-6",
+        viewMode === "feed" ? "max-w-2xl" : "max-w-[1800px]"
+      )}>
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted" />
@@ -132,7 +174,89 @@ export function ImagesFeed() {
             <ImageIcon className="mx-auto h-12 w-12 text-muted mb-4" />
             <p className="text-muted">No uploaded images yet</p>
           </div>
+        ) : viewMode === "grid" ? (
+          /* Grid View - row by row */
+          <>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {images.map((img, index) => {
+                const thumbUrl = imageUrl(img.thumbPath);
+                const shouldBlur =
+                  isBlurred(img.nsfwLevel) && !revealedIds.has(img.id);
+
+                if (!thumbUrl) return null;
+
+                return (
+                  <div key={img.id} className="group">
+                    <button
+                      onClick={() => {
+                        if (shouldBlur) {
+                          toggleReveal(img.id);
+                        } else {
+                          setLightboxIndex(index);
+                        }
+                      }}
+                      className="relative block w-full aspect-square overflow-hidden rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    >
+                      <img
+                        src={thumbUrl}
+                        alt={img.prompt?.slice(0, 80) ?? "Uploaded image"}
+                        className={cn(
+                          "w-full h-full object-cover transition-all duration-300",
+                          shouldBlur && "blur-2xl scale-110",
+                          !shouldBlur && "group-hover:scale-105"
+                        )}
+                        loading="lazy"
+                      />
+                      {shouldBlur && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <span className="rounded-lg bg-black/60 px-2.5 py-1 text-xs text-white/80">
+                            Click to reveal
+                          </span>
+                        </div>
+                      )}
+                      {!shouldBlur && (
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Link
+                            href={`/models/${img.modelId}${img.versionId ? `?version=${img.versionId}` : ""}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-white/90 hover:text-white font-medium truncate block"
+                          >
+                            {img.modelName || "Unknown Model"}
+                          </Link>
+                          {img.createdAt && (
+                            <span className="text-[10px] text-white/60">
+                              {formatDate(img.createdAt)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {hasMore && (
+              <div className="mt-8 text-center">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-6 py-2.5 text-sm font-medium hover:bg-card-hover transition-colors disabled:opacity-50"
+                >
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Load More"
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         ) : (
+          /* Feed View - social network style */
           <div className="space-y-6">
             {images.map((img, index) => {
               const fullUrl = imageUrl(img.localPath);
