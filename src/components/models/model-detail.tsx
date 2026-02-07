@@ -24,6 +24,7 @@ const TYPE_COLORS: Record<string, string> = {
   LORA: "bg-purple-500/20 text-purple-400",
   LoRA: "bg-purple-500/20 text-purple-400",
   Checkpoint: "bg-blue-500/20 text-blue-400",
+  "Diffusion Model": "bg-blue-500/20 text-blue-400",
   VAE: "bg-green-500/20 text-green-400",
   ControlNet: "bg-orange-500/20 text-orange-400",
   Embedding: "bg-pink-500/20 text-pink-400",

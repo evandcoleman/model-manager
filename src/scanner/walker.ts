@@ -84,7 +84,7 @@ function inferCategory(relativePath: string): {
 
   const categoryMap: Record<string, string> = {
     loras: "LoRA",
-    diffusion_models: "Checkpoint",
+    diffusion_models: "Diffusion Model",
     vae: "VAE",
     controlnet: "ControlNet",
     embeddings: "Embedding",

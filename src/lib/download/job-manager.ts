@@ -2,12 +2,13 @@ import fs from "fs";
 import path from "path";
 import { randomBytes } from "crypto";
 import { getConfig } from "../config";
-import type {
-  DownloadJob,
-  DownloadProgress,
-  DownloadSource,
-  SourceMetadata,
-  CreateJobOptions,
+import {
+  TYPE_DIR_MAP,
+  type DownloadJob,
+  type DownloadProgress,
+  type DownloadSource,
+  type SourceMetadata,
+  type CreateJobOptions,
 } from "./types";
 import { downloadFile, downloadToBuffer, HttpError } from "./downloader";
 import {
@@ -203,15 +204,6 @@ class JobManager {
         this.updateJob(job);
 
         // Determine output directory
-        const TYPE_DIR_MAP: Record<string, string> = {
-          LORA: "loras",
-          Checkpoint: "diffusion_models",
-          VAE: "vae",
-          ControlNet: "controlnet",
-          TextualInversion: "embeddings",
-          Upscaler: "upscale_models",
-        };
-
         const BASE_MODEL_DIR_MAP: Record<string, string> = {
           ZImageTurbo: "zit",
           Qwen: "qwen",

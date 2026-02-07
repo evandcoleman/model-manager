@@ -218,7 +218,7 @@ function guessModelType(filename: string, tags?: string[]): string {
   if (tagStr.includes("textual-inversion") || tagStr.includes("embedding"))
     return "TextualInversion";
 
-  return "Checkpoint";
+  return "Diffusion Model";
 }
 
 function guessBaseModel(repoName: string, tags?: string[]): string | undefined {

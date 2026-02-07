@@ -64,13 +64,19 @@ const SOURCE_INFO: Record<string, { name: string; color: string }> = {
 };
 
 const MODEL_TYPES = [
-  "Checkpoint",
+  "Diffusion Model",
   "LORA",
   "VAE",
   "ControlNet",
   "TextualInversion",
   "Upscaler",
 ];
+
+// Normalize "Checkpoint" from APIs to "Diffusion Model"
+function normalizeModelType(type: string): string {
+  if (type === "Checkpoint") return "Diffusion Model";
+  return type;
+}
 
 const BASE_MODELS = [
   "Flux.1 S",
@@ -216,7 +222,7 @@ export function DownloadDialog({
       }
 
       setPreview(data);
-      setModelType(data.modelType || "Checkpoint");
+      setModelType(normalizeModelType(data.modelType) || "Diffusion Model");
       setBaseModel(data.baseModel || "");
       setCustomBaseModel("");
     } catch (err) {

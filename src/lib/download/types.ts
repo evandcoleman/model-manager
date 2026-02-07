@@ -112,12 +112,19 @@ export interface ModelVersionDict {
 
 export const TYPE_DIR_MAP: Record<string, string> = {
   LORA: "loras",
-  Checkpoint: "diffusion_models",
+  "Diffusion Model": "diffusion_models",
+  Checkpoint: "diffusion_models", // Alias for backwards compatibility
   VAE: "vae",
   ControlNet: "controlnet",
   TextualInversion: "embeddings",
   Upscaler: "upscale_models",
 };
+
+// Normalize model types from different sources to canonical names
+export function normalizeModelType(type: string): string {
+  if (type === "Checkpoint") return "Diffusion Model";
+  return type;
+}
 
 export const BASE_MODEL_DIR_MAP: Record<string, string> = {
   ZImageTurbo: "zit",
