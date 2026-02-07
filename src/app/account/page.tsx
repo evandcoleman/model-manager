@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Copy, RefreshCw, Check } from "lucide-react";
 import Link from "next/link";
+import { TokenSettings } from "@/components/settings/token-settings";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -188,6 +189,9 @@ export default function AccountPage() {
             </button>
           </form>
         </section>
+
+        {/* API Tokens Section */}
+        <TokenSettings />
 
         {/* API Key Section */}
         <section className="rounded-xl border border-border bg-card p-6">

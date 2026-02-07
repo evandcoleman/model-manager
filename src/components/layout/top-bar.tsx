@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Settings, RefreshCw, Eye, User, LogOut } from "lucide-react";
+import { Search, Settings, RefreshCw, Eye, User, LogOut, Download } from "lucide-react";
 import { useNsfw } from "../providers/nsfw-provider";
 import { cn } from "../../lib/utils";
+import { DownloadDialog } from "../downloads/download-dialog";
 
 interface TopBarProps {
   search: string;
@@ -32,6 +33,7 @@ export function TopBar({
   const router = useRouter();
   const { maxNsfwLevel, setMaxNsfwLevel } = useNsfw();
   const [showSettings, setShowSettings] = useState(false);
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
 
   async function handleLogout() {
@@ -76,6 +78,15 @@ export function TopBar({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowDownloadDialog(true)}
+            className="flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm text-muted hover:text-foreground hover:border-accent/50 transition-colors"
+            title="Download Model"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Download</span>
+          </button>
+
           <div className="relative" ref={settingsRef}>
             <button
               onClick={() => setShowSettings(!showSettings)}
@@ -154,6 +165,12 @@ export function TopBar({
           </div>
         </div>
       </div>
+
+      <DownloadDialog
+        open={showDownloadDialog}
+        onClose={() => setShowDownloadDialog(false)}
+        onDownloadComplete={onRescan}
+      />
     </header>
   );
 }
