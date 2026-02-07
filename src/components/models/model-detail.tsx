@@ -90,11 +90,12 @@ function VersionSelector({
                   LOCAL
                 </span>
               )}
-              {v.baseModel && (
-                <span className="text-xs text-muted ml-auto">
-                  {v.baseModel}
-                </span>
-              )}
+              <span className="text-xs text-muted ml-auto flex items-center gap-2">
+                {v.images.length > 0 && (
+                  <span>{v.images.length} img{v.images.length !== 1 ? "s" : ""}</span>
+                )}
+                {v.baseModel && <span>{v.baseModel}</span>}
+              </span>
             </button>
           ))}
         </div>

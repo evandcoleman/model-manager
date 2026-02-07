@@ -66,6 +66,11 @@ function VersionSelector({
               )}
             >
               {v.name}
+              {v.images.length > 0 && (
+                <span className="text-xs text-muted ml-auto">
+                  {v.images.length} img{v.images.length !== 1 ? "s" : ""}
+                </span>
+              )}
             </button>
           ))}
         </div>
