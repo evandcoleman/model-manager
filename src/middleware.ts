@@ -11,7 +11,19 @@ const PUBLIC_PATHS = [
 ];
 
 export function middleware(request: NextRequest) {
-  if (process.env.DESKTOP_MODE === "true") return NextResponse.next();
+  if (process.env.DESKTOP_MODE === "true") {
+    const { pathname } = request.nextUrl;
+    // Skip logging for static assets
+    if (!pathname.startsWith("/_next/")) {
+      const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.ip ||
+        "127.0.0.1";
+      const method = request.method;
+      console.log(`${ip} ${method} ${pathname}`);
+    }
+    return NextResponse.next();
+  }
 
   const { pathname } = request.nextUrl;
 
