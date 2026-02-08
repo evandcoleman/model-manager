@@ -45,13 +45,15 @@ export function ImagesFeed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("uploads-view-mode") as ViewMode) || "feed";
-    }
-    return "feed";
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>("feed");
   const { isBlurred, revealedIds, toggleReveal } = useNsfw();
+
+  useEffect(() => {
+    const saved = localStorage.getItem("uploads-view-mode") as ViewMode | null;
+    if (saved === "feed" || saved === "grid") {
+      setViewMode(saved);
+    }
+  }, []);
 
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
