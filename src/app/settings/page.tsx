@@ -33,6 +33,9 @@ export default function SettingsPage() {
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [serverPort, setServerPort] = useState<number | null>(null);
   const [serverAddresses, setServerAddresses] = useState<string[]>([]);
+  const [configuredPort, setConfiguredPort] = useState<string>("");
+  const [portDirty, setPortDirty] = useState(false);
+  const [portSaved, setPortSaved] = useState(false);
 
   useEffect(() => {
     if (!isDesktopMode) {
@@ -52,6 +55,9 @@ export default function SettingsPage() {
     window.electronAPI.getServerInfo().then((info) => {
       setServerPort(info.port);
       setServerAddresses(info.addresses);
+    });
+    window.electronAPI.getSetting("serverPort").then((val) => {
+      setConfiguredPort(String(val ?? 39384));
     });
 
     fetch("/api/auth/api-key")
@@ -251,7 +257,7 @@ export default function SettingsPage() {
             <p className="text-sm text-muted mb-4">
               The REST API is available at these addresses. Use the API key above to authenticate requests.
             </p>
-            <div className="space-y-2">
+            <div className="space-y-2 mb-6">
               <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-background px-3">
                 <Globe className="h-4 w-4 text-muted shrink-0" />
                 <code className="text-sm font-mono text-foreground/90">
@@ -271,6 +277,51 @@ export default function SettingsPage() {
                   <span className="text-xs text-muted ml-auto">network</span>
                 </div>
               ))}
+            </div>
+
+            <div className="border-t border-border/50 pt-4">
+              <label className="block text-sm text-foreground/80 mb-2">
+                Port
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1024}
+                  max={65535}
+                  value={configuredPort}
+                  onChange={(e) => {
+                    setConfiguredPort(e.target.value);
+                    setPortDirty(true);
+                    setPortSaved(false);
+                  }}
+                  className="h-10 w-28 rounded-lg border border-border bg-background px-3 text-sm font-mono text-foreground tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                {portDirty && (
+                  <button
+                    onClick={async () => {
+                      const port = parseInt(configuredPort, 10);
+                      if (port >= 1024 && port <= 65535 && window.electronAPI) {
+                        await window.electronAPI.setSetting("serverPort", port);
+                        setPortDirty(false);
+                        setPortSaved(true);
+                        setTimeout(() => setPortSaved(false), 3000);
+                      }
+                    }}
+                    className="h-10 px-4 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
+                  >
+                    Save
+                  </button>
+                )}
+                {portSaved && (
+                  <span className="text-sm text-green-400 flex items-center gap-1">
+                    <Check className="h-3.5 w-3.5" />
+                    Restart to apply
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted mt-2">
+                Port for the local server. Changes take effect on restart.
+              </p>
             </div>
           </section>
         )}
