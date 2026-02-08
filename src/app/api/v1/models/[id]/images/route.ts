@@ -121,10 +121,13 @@ async function postHandler(
   }
 
   // Parse generation params from form data
+  console.log("[Upload] Form data keys:", [...formData.keys()]);
   const prompt = formData.get("prompt") as string | null;
   const nsfwLevel = parseInt(formData.get("nsfwLevel") as string) || 0;
   const versionIdStr = formData.get("versionId") as string | null;
   const versionId = versionIdStr ? parseInt(versionIdStr, 10) : null;
+  console.log("[Upload] prompt:", prompt ? `${prompt.slice(0, 50)}...` : "null");
+  console.log("[Upload] nsfwLevel:", nsfwLevel, "versionId:", versionId);
 
   const generationParams: Record<string, unknown> = {};
 
@@ -154,14 +157,22 @@ async function postHandler(
   }
 
   const comfyWorkflow = formData.get("comfyWorkflow");
+  console.log("[Upload] comfyWorkflow received:", comfyWorkflow ? `${String(comfyWorkflow).length} chars` : "null");
   if (comfyWorkflow) {
+    console.log("[Upload] comfyWorkflow preview:", String(comfyWorkflow).slice(0, 200));
     try {
       generationParams.comfyWorkflow = JSON.parse(comfyWorkflow as string);
-    } catch {}
+      console.log("[Upload] comfyWorkflow parsed successfully, keys:", Object.keys(generationParams.comfyWorkflow as object));
+    } catch (err) {
+      console.error("[Upload] comfyWorkflow JSON parse error:", err);
+    }
   }
 
   if (width) generationParams.width = width;
   if (height) generationParams.height = height;
+
+  console.log("[Upload] Final generationParams keys:", Object.keys(generationParams));
+  console.log("[Upload] Has comfyWorkflow:", "comfyWorkflow" in generationParams);
 
   // Get next sort order
   const lastImage = db
