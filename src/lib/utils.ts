@@ -1,3 +1,5 @@
+import DOMPurify from "isomorphic-dompurify";
+
 export function formatFileSize(bytes: number | null | undefined): string {
   if (bytes == null || bytes === 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -38,19 +40,9 @@ export function getNsfwLabel(level: number): string {
   return NSFW_LABELS[highest] ?? `NSFW (${level})`;
 }
 
-let _DOMPurify: typeof import("isomorphic-dompurify").default | null = null;
-
-function getDOMPurify() {
-  if (!_DOMPurify) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    _DOMPurify = require("isomorphic-dompurify").default;
-  }
-  return _DOMPurify!;
-}
-
 export function sanitizeHtml(html: string): string {
   if (typeof window === "undefined") return html;
-  return getDOMPurify().sanitize(html, {
+  return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       "p", "br", "strong", "b", "em", "i", "u", "a", "ul", "ol", "li",
       "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "code", "pre"

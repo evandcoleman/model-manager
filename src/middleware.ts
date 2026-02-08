@@ -17,7 +17,7 @@ export function middleware(request: NextRequest) {
     if (!pathname.startsWith("/_next/")) {
       const ip =
         request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-        request.ip ||
+        request.headers.get("x-real-ip") ||
         "127.0.0.1";
       const method = request.method;
       console.log(`${ip} ${method} ${pathname}`);
