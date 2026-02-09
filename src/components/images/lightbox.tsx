@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { X, ChevronLeft, ChevronRight, Copy, Check, ChevronDown, ChevronUp, Trash2, Calendar, Download, Loader2 } from "lucide-react";
 import { cn, getImageUrl } from "../../lib/utils";
 import { useNsfw } from "../providers/nsfw-provider";
@@ -262,6 +262,74 @@ export function Lightbox({ images, initialIndex, onClose, modelId, onDelete }: L
   const [isDownloading, setIsDownloading] = useState(false);
   const { isBlurred, revealedIds, toggleReveal } = useNsfw();
 
+  // Zoom and pan state
+  const [scale, setScale] = useState(1);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+
+  // Reset zoom when changing images
+  useEffect(() => {
+    setScale(1);
+    setTranslate({ x: 0, y: 0 });
+  }, [index]);
+
+  // Handle wheel events for zoom (pinch gesture on trackpad)
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    // Pinch-to-zoom on trackpad reports as wheel with ctrlKey
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = -e.deltaY * 0.01;
+      setScale((prev) => Math.min(Math.max(0.5, prev + delta), 5));
+    } else if (scale > 1) {
+      // When zoomed in, allow panning with scroll
+      e.preventDefault();
+      setTranslate((prev) => ({
+        x: prev.x - e.deltaX,
+        y: prev.y - e.deltaY,
+      }));
+    }
+  }, [scale]);
+
+  // Double-click to toggle zoom
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (scale > 1) {
+      setScale(1);
+      setTranslate({ x: 0, y: 0 });
+    } else {
+      setScale(2);
+    }
+  }, [scale]);
+
+  // Mouse drag for panning when zoomed
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (scale > 1) {
+      e.preventDefault();
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - translate.x, y: e.clientY - translate.y });
+    }
+  }, [scale, translate]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDragging && scale > 1) {
+      setTranslate({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    }
+  }, [isDragging, scale, dragStart]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Also handle mouse leaving the container
+  const handleMouseLeave = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
   const handleDelete = useCallback(async () => {
     if (!modelId || !onDelete) {
       console.error("Delete failed: missing modelId or onDelete callback");
@@ -391,13 +459,35 @@ export function Lightbox({ images, initialIndex, onClose, modelId, onDelete }: L
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") goPrev();
-      if (e.key === "ArrowRight") goNext();
+      if (e.key === "Escape") {
+        if (scale > 1) {
+          // Reset zoom first, then close on second Escape
+          setScale(1);
+          setTranslate({ x: 0, y: 0 });
+        } else {
+          onClose();
+        }
+      }
+      if (e.key === "ArrowLeft" && scale === 1) goPrev();
+      if (e.key === "ArrowRight" && scale === 1) goNext();
+      // Zoom with +/- or =/- keys
+      if (e.key === "=" || e.key === "+") {
+        e.preventDefault();
+        setScale((prev) => Math.min(5, prev + 0.5));
+      }
+      if (e.key === "-") {
+        e.preventDefault();
+        setScale((prev) => Math.max(0.5, prev - 0.5));
+      }
+      // Reset zoom with 0
+      if (e.key === "0") {
+        setScale(1);
+        setTranslate({ x: 0, y: 0 });
+      }
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose, goPrev, goNext]);
+  }, [onClose, goPrev, goNext, scale]);
 
   // Preload adjacent images for instant navigation
   useEffect(() => {
@@ -476,16 +566,33 @@ export function Lightbox({ images, initialIndex, onClose, modelId, onDelete }: L
       )}
 
       {/* Image */}
-      <div className="flex flex-1 items-center justify-center p-8">
+      <div
+        ref={imageContainerRef}
+        className="flex flex-1 items-center justify-center p-8 overflow-hidden"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        style={{ cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "default" }}
+      >
         {fullUrl && (
-          <div className="relative max-h-full max-w-full">
+          <div
+            className="relative max-h-full max-w-full"
+            onDoubleClick={handleDoubleClick}
+            style={{
+              transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+              transition: isDragging ? "none" : "transform 0.1s ease-out",
+            }}
+          >
             <img
               src={fullUrl}
               alt={current.prompt?.slice(0, 80) ?? "Full resolution image"}
               className={cn(
-                "max-h-[90vh] max-w-full object-contain transition-all duration-300",
+                "max-h-[90vh] max-w-full object-contain select-none",
                 shouldBlur && "blur-3xl scale-105"
               )}
+              draggable={false}
             />
             {shouldBlur && (
               <button
@@ -509,9 +616,16 @@ export function Lightbox({ images, initialIndex, onClose, modelId, onDelete }: L
         createdAt={current.createdAt}
       />
 
-      {/* Image counter */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-zinc-800/80 px-3 py-1 text-xs text-zinc-400">
-        {index + 1} / {images.length}
+      {/* Image counter and zoom indicator */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3">
+        <div className="rounded-full bg-zinc-800/80 px-3 py-1 text-xs text-zinc-400">
+          {index + 1} / {images.length}
+        </div>
+        {scale !== 1 && (
+          <div className="rounded-full bg-zinc-800/80 px-3 py-1 text-xs text-zinc-400">
+            {Math.round(scale * 100)}%
+          </div>
+        )}
       </div>
     </div>
   );
