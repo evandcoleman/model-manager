@@ -67,6 +67,12 @@ export function ImageGallery({ images, modelId, onImageDeleted }: ImageGalleryPr
                       ? `${img.width}/${img.height}`
                       : undefined,
                 }}
+                onError={(e) => {
+                  // Hide broken images gracefully (e.g., auth errors)
+                  const target = e.currentTarget;
+                  target.style.display = "none";
+                  console.warn(`Failed to load image ${img.id}:`, thumbUrl);
+                }}
               />
               {shouldBlur && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/20">

@@ -593,6 +593,14 @@ export function Lightbox({ images, initialIndex, onClose, modelId, onDelete }: L
                 shouldBlur && "blur-3xl scale-105"
               )}
               draggable={false}
+              onError={(e) => {
+                // Show error message for broken full-resolution images
+                const target = e.currentTarget;
+                console.error(`Failed to load full image ${current.id}:`, fullUrl);
+                // Replace with error placeholder
+                target.alt = "Failed to load image (possible auth error)";
+                target.style.opacity = "0.3";
+              }}
             />
             {shouldBlur && (
               <button

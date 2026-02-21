@@ -38,26 +38,11 @@ export function getNsfwLabel(level: number): string {
   return NSFW_LABELS[highest] ?? `NSFW (${level})`;
 }
 
-// Lazy-loaded DOMPurify instance (browser only)
-let _DOMPurify: { sanitize: (html: string, config: object) => string } | null = null;
+import DOMPurify from "dompurify";
 
 export function sanitizeHtml(html: string): string {
   if (typeof window === "undefined") return html;
-
-  // Lazy load DOMPurify on first use
-  if (!_DOMPurify) {
-    // DOMPurify v3 is ESM — dynamic import isn't usable synchronously,
-    // so we use require and handle the various export shapes.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("dompurify");
-    // v3 ESM: mod itself is the default (has .sanitize)
-    // v2 CJS: mod.default is the constructor, or mod itself
-    _DOMPurify = typeof mod.sanitize === "function"
-      ? mod
-      : mod.default ?? mod;
-  }
-
-  return _DOMPurify!.sanitize(html, {
+  return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       "p", "br", "strong", "b", "em", "i", "u", "a", "ul", "ol", "li",
       "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "code", "pre"
