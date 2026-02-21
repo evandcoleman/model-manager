@@ -12,7 +12,7 @@ import {
   ChevronDown,
   ExternalLink,
 } from "lucide-react";
-import { cn, formatNumber, formatFileSize, formatSizeKb, sanitizeHtml } from "../../lib/utils";
+import { cn, formatNumber, formatFileSize, formatSizeKb, sanitizeHtml, loadPurify } from "../../lib/utils";
 import { ImageGallery } from "../images/image-gallery";
 import { ModelPlaceholder } from "./model-placeholder";
 import { NotesEditor } from "./notes-editor";
@@ -121,6 +121,13 @@ export function ModelDetailView({ model }: { model: ModelDetail }) {
 
   const [selectedVersion, setSelectedVersion] = useState<VersionDetail>(getInitialVersion);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [purifyReady, setPurifyReady] = useState(false);
+
+  useEffect(() => {
+    if (model.description) {
+      loadPurify().then(() => setPurifyReady(true));
+    }
+  }, [model.description]);
 
   // Update URL when version changes
   const handleVersionSelect = useCallback((v: VersionDetail) => {

@@ -47,31 +47,34 @@ const SANITIZE_CONFIG = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _purifyPromise: Promise<any> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _purify: any = null;
 
-function getPurify() {
-  if (_purify) return _purify;
-  if (typeof window === "undefined") return null;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("dompurify");
-    _purify = mod.default ?? mod;
-    // DOMPurify v3: if it's a function, call it to get the instance
-    if (typeof _purify === "function" && !_purify.sanitize) {
-      _purify = _purify(window);
-    }
-    return _purify;
-  } catch {
-    return null;
+export function loadPurify(): Promise<unknown> {
+  if (_purify) return Promise.resolve(_purify);
+  if (typeof window === "undefined") return Promise.resolve(null);
+  if (!_purifyPromise) {
+    _purifyPromise = import("dompurify").then((mod) => {
+      const DOMPurify = mod.default ?? mod;
+      // DOMPurify v3 exports a factory function
+      _purify = typeof DOMPurify === "function" ? DOMPurify(window) : DOMPurify;
+      return _purify;
+    }).catch(() => null);
   }
+  return _purifyPromise;
+}
+
+// Eagerly start loading on the client
+if (typeof window !== "undefined") {
+  loadPurify();
 }
 
 export function sanitizeHtml(html: string): string {
   if (typeof window === "undefined") return html;
-  const purify = getPurify();
-  if (purify?.sanitize) {
+  if (_purify?.sanitize) {
     try {
-      return purify.sanitize(html, SANITIZE_CONFIG);
+      return _purify.sanitize(html, SANITIZE_CONFIG);
     } catch {
       // fall through
     }
