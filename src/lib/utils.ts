@@ -38,13 +38,6 @@ export function getNsfwLabel(level: number): string {
   return NSFW_LABELS[highest] ?? `NSFW (${level})`;
 }
 
-import * as DOMPurifyModule from "dompurify";
-
-// DOMPurify v3 ESM: handle both default export and namespace import shapes
-const DOMPurify =
-  (DOMPurifyModule as unknown as { default?: typeof DOMPurifyModule }).default ??
-  DOMPurifyModule;
-
 const SANITIZE_CONFIG = {
   ALLOWED_TAGS: [
     "p", "br", "strong", "b", "em", "i", "u", "a", "ul", "ol", "li",
@@ -53,14 +46,38 @@ const SANITIZE_CONFIG = {
   ALLOWED_ATTR: ["href", "target", "rel"],
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _purify: any = null;
+
+function getPurify() {
+  if (_purify) return _purify;
+  if (typeof window === "undefined") return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require("dompurify");
+    _purify = mod.default ?? mod;
+    // DOMPurify v3: if it's a function, call it to get the instance
+    if (typeof _purify === "function" && !_purify.sanitize) {
+      _purify = _purify(window);
+    }
+    return _purify;
+  } catch {
+    return null;
+  }
+}
+
 export function sanitizeHtml(html: string): string {
   if (typeof window === "undefined") return html;
-  try {
-    return DOMPurify.sanitize(html, SANITIZE_CONFIG);
-  } catch {
-    // Fallback: strip all HTML tags
-    return html.replace(/<[^>]+>/g, "");
+  const purify = getPurify();
+  if (purify?.sanitize) {
+    try {
+      return purify.sanitize(html, SANITIZE_CONFIG);
+    } catch {
+      // fall through
+    }
   }
+  // Fallback: strip all HTML tags
+  return html.replace(/<[^>]+>/g, "");
 }
 
 export function formatSizeKb(sizeKb: number | null | undefined): string {
