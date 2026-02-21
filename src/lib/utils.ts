@@ -39,15 +39,22 @@ export function getNsfwLabel(level: number): string {
 }
 
 // Lazy-loaded DOMPurify instance (browser only)
-let _DOMPurify: typeof import("dompurify").default | null = null;
+let _DOMPurify: { sanitize: (html: string, config: object) => string } | null = null;
 
 export function sanitizeHtml(html: string): string {
   if (typeof window === "undefined") return html;
 
   // Lazy load DOMPurify on first use
   if (!_DOMPurify) {
+    // DOMPurify v3 is ESM — dynamic import isn't usable synchronously,
+    // so we use require and handle the various export shapes.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    _DOMPurify = require("dompurify").default || require("dompurify");
+    const mod = require("dompurify");
+    // v3 ESM: mod itself is the default (has .sanitize)
+    // v2 CJS: mod.default is the constructor, or mod itself
+    _DOMPurify = typeof mod.sanitize === "function"
+      ? mod
+      : mod.default ?? mod;
   }
 
   return _DOMPurify!.sanitize(html, {
