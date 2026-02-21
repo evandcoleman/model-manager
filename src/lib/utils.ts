@@ -38,17 +38,29 @@ export function getNsfwLabel(level: number): string {
   return NSFW_LABELS[highest] ?? `NSFW (${level})`;
 }
 
-import DOMPurify from "dompurify";
+import * as DOMPurifyModule from "dompurify";
+
+// DOMPurify v3 ESM: handle both default export and namespace import shapes
+const DOMPurify =
+  (DOMPurifyModule as unknown as { default?: typeof DOMPurifyModule }).default ??
+  DOMPurifyModule;
+
+const SANITIZE_CONFIG = {
+  ALLOWED_TAGS: [
+    "p", "br", "strong", "b", "em", "i", "u", "a", "ul", "ol", "li",
+    "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "code", "pre",
+  ],
+  ALLOWED_ATTR: ["href", "target", "rel"],
+};
 
 export function sanitizeHtml(html: string): string {
   if (typeof window === "undefined") return html;
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: [
-      "p", "br", "strong", "b", "em", "i", "u", "a", "ul", "ol", "li",
-      "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "code", "pre"
-    ],
-    ALLOWED_ATTR: ["href", "target", "rel"],
-  });
+  try {
+    return DOMPurify.sanitize(html, SANITIZE_CONFIG);
+  } catch {
+    // Fallback: strip all HTML tags
+    return html.replace(/<[^>]+>/g, "");
+  }
 }
 
 export function formatSizeKb(sizeKb: number | null | undefined): string {
